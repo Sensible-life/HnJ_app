@@ -23,13 +23,14 @@
 - [ ] 스테이징 환경 배포 (API + 관리자 웹)
 
 ## Phase 2 — 핵심 점검 플로우 (MVP 핵심)
-- [ ] QR 스캔 체크인 (카메라 기반)
-- [ ] NFC 태깅 체크인 (기기 호환성 스파이크 선행)
-- [ ] GPS 보조 검증 로직
-- [ ] ROOM PRO 15개 구역 3-State 토글 UI
-- [ ] 긴급 선택 시 카메라 자동 호출/강제 (최소 1장)
-- [ ] 로컬 SQLite 임시 저장 + 동기화 큐
-- [ ] 네트워크 재연결 시 자동 동기화 + 충돌 처리 정책 적용
+- [x] QR 스캔 체크인 (expo-camera, `CheckInScreen`) — 실제 서버 룸 조회(`/rooms/lookup`) 연동은 아직, 스캔값을 그대로 객실명으로 사용 중
+- [ ] NFC 태깅 체크인 — UI 버튼/안내까지만 구현, 실제 NFC 하드웨어 연동은 Expo Go에서 불가하여 dev client 빌드 필요
+- [x] GPS 보조 검증 로직 (expo-location으로 체크인 시 위/경도 기록)
+- [x] ROOM PRO 15개 구역 3-State 토글 UI (`RoomInspectionScreen`, `ThreeStateToggle`)
+- [x] 긴급 선택 시 카메라 자동 호출/강제 (최소 1장, expo-image-picker)
+- [x] 로컬 SQLite 임시 저장 + 동기화 큐 (`lib/db.ts`, `lib/sync.ts`)
+- [x] 네트워크 재연결 시 자동 동기화 기초 구현 (`syncPendingSessions`) — 충돌 처리 정책은 아직 미구현
+
 
 ## Phase 3 — 미디어 엔진
 - [ ] 촬영 시 자동 워터마크 각인 (호텔명/객실번호/일시)

@@ -6,6 +6,20 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "현장 점검 중 증빙 사진 촬영을 위해 카메라 접근 권한이 필요합니다."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "체크인한 위치가 실제 객실 위치와 맞는지 확인하기 위해 위치 권한이 필요합니다."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true
     },

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { colors, radius, spacing, shadow } from "../theme/tokens";
@@ -9,7 +9,7 @@ const TASKS = [
   { room: "302호", hotel: "신라 부산", status: "success" as const, label: "완료" },
 ];
 
-export function HomeScreen() {
+export function HomeScreen({ navigation }: { navigation: { navigate: (name: string) => void } }) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.header}>오늘의 할 일</Text>
@@ -21,10 +21,10 @@ export function HomeScreen() {
         <StatCard label="긴급" value="1건" icon="!" />
       </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>퀵 체크인</Text>
+      <TouchableOpacity style={styles.card} onPress={() => navigation.navigate("Inspection")}>
+        <Text style={styles.cardTitle}>퀵 체크인 →</Text>
         <Text style={styles.cardHint}>QR 스캔 또는 NFC 태깅으로 바로 시작하세요</Text>
-      </View>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>진행 중 / 최근 점검</Text>
       <View style={styles.card}>
