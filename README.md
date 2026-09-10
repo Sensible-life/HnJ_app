@@ -70,7 +70,9 @@ npm run dev:api     # API 서버 (NestJS)
 npm run dev:mobile  # 모바일 앱 (Expo)
 ```
 
-> ⚠️ `apps/api`는 Prisma 스키마까지만 작성된 상태입니다. `DATABASE_URL`을 `.env`에 설정하고
+> ⚠️ 현재 `AppModule`에서 Prisma/Auth 모듈은 임시로 빠져 있습니다 (DB 미연결 상태에서도 체크인 동기화/미디어/리포트/알림/승인 기능을 바로 테스트할 수 있도록). DB를 붙일 때 `apps/api/src/app.module.ts` 주석 참고해서 다시 추가하면 됩니다.
+>
+> `apps/api`는 Prisma 스키마까지만 작성된 상태입니다. `DATABASE_URL`을 `.env`에 설정하고
 > (네트워크 제약이 없는 환경에서) `npx prisma generate && npx prisma migrate dev`를 한 번 실행해야
 > API가 정상 동작합니다. 이 세션의 기기 네트워크 정책상 Prisma 엔진 바이너리 다운로드가 막혀 있어
 > 직접 실행하지 못했습니다.
