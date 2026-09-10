@@ -3,16 +3,18 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "rea
 import * as ImagePicker from "expo-image-picker";
 import { colors, radius, spacing, shadow } from "../theme/tokens";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
-import { getItemsForSession, updateItemState, completeSession, LocalItem } from "../lib/db";
+import { getItemsForSession, updateItemState, completeSession, insertMedia, LocalItem } from "../lib/db";
 import { syncPendingSessions } from "../lib/sync";
+import { uploadPendingMedia } from "../lib/mediaSync";
 
 type Props = {
   sessionId: string;
   roomLabel: string;
+  hotelName: string;
   onDone: () => void;
 };
 
-export function RoomInspectionScreen({ sessionId, roomLabel, onDone }: Props) {
+export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }: Props) {
   const [items, setItems] = useState<LocalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,6 +44,17 @@ export function RoomInspectionScreen({ sessionId, roomLabel, onDone }: Props) {
         Alert.alert("사진 필요", "긴급 항목은 최소 1장의 사진이 필요합니다.");
         return;
       }
+      const asset = result.assets[0];
+      await insertMedia({
+        id: `media_${Date.now()}`,
+        item_id: item.id,
+        session_id: sessionId,
+        local_uri: asset.uri,
+        media_type: "GENERAL",
+        hotel_name: hotelName,
+        room_label: roomLabel,
+        captured_at: new Date().toISOString(),
+      });
       const newPhotoCount = item.photo_count + 1;
       await updateItemState(item.id, state, newPhotoCount);
     } else {
@@ -62,7 +75,7 @@ export function RoomInspectionScreen({ sessionId, roomLabel, onDone }: Props) {
     setSaving(true);
     try {
       await completeSession(sessionId, new Date().toISOString());
-      const result = await syncPendingSessions();
+      const [result] = await Promise.all([syncPendingSessions(), uploadPendingMedia()]);
       if (result.synced > 0) {
         Alert.alert("완료", "점검이 완료되어 서버에 리포트가 생성되었습니다.");
       } else {

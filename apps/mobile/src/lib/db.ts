@@ -9,6 +9,7 @@ function getDb() {
         PRAGMA journal_mode = WAL;
         CREATE TABLE IF NOT EXISTS sessions (
           id TEXT PRIMARY KEY NOT NULL,
+          hotel_name TEXT NOT NULL DEFAULT '',
           room_label TEXT NOT NULL,
           type TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
@@ -28,6 +29,18 @@ function getDb() {
           comment TEXT,
           photo_count INTEGER NOT NULL DEFAULT 0
         );
+        CREATE TABLE IF NOT EXISTS media (
+          id TEXT PRIMARY KEY NOT NULL,
+          item_id TEXT NOT NULL,
+          session_id TEXT NOT NULL,
+          local_uri TEXT NOT NULL,
+          media_type TEXT NOT NULL DEFAULT 'GENERAL',
+          hotel_name TEXT NOT NULL,
+          room_label TEXT NOT NULL,
+          captured_at TEXT NOT NULL,
+          remote_url TEXT,
+          synced INTEGER NOT NULL DEFAULT 0
+        );
       `);
       return db;
     });
@@ -37,6 +50,7 @@ function getDb() {
 
 export interface LocalSession {
   id: string;
+  hotel_name: string;
   room_label: string;
   type: "ROOM_PRO" | "BATH_PRO";
   status: "IN_PROGRESS" | "COMPLETED";
@@ -58,13 +72,27 @@ export interface LocalItem {
   photo_count: number;
 }
 
+export interface LocalMedia {
+  id: string;
+  item_id: string;
+  session_id: string;
+  local_uri: string;
+  media_type: "BEFORE" | "AFTER" | "GENERAL";
+  hotel_name: string;
+  room_label: string;
+  captured_at: string;
+  remote_url: string | null;
+  synced: number;
+}
+
 export async function createSession(session: Omit<LocalSession, "synced">) {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO sessions (id, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    `INSERT INTO sessions (id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
       session.id,
+      session.hotel_name,
       session.room_label,
       session.type,
       session.status,
@@ -126,4 +154,32 @@ export async function getUnsyncedSessions(): Promise<LocalSession[]> {
 export async function markSessionSynced(sessionId: string) {
   const db = await getDb();
   await db.runAsync(`UPDATE sessions SET synced = 1 WHERE id = ?`, [sessionId]);
+}
+
+export async function insertMedia(media: Omit<LocalMedia, "remote_url" | "synced">) {
+  const db = await getDb();
+  await db.runAsync(
+    `INSERT INTO media (id, item_id, session_id, local_uri, media_type, hotel_name, room_label, captured_at, remote_url, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)`,
+    [
+      media.id,
+      media.item_id,
+      media.session_id,
+      media.local_uri,
+      media.media_type,
+      media.hotel_name,
+      media.room_label,
+      media.captured_at,
+    ],
+  );
+}
+
+export async function getUnsyncedMedia(): Promise<LocalMedia[]> {
+  const db = await getDb();
+  return db.getAllAsync<LocalMedia>(`SELECT * FROM media WHERE synced = 0`);
+}
+
+export async function markMediaSynced(mediaId: string, remoteUrl: string) {
+  const db = await getDb();
+  await db.runAsync(`UPDATE media SET synced = 1, remote_url = ? WHERE id = ?`, [remoteUrl, mediaId]);
 }

@@ -3,13 +3,14 @@ import { CheckInScreen } from "../screens/CheckInScreen";
 import { RoomInspectionScreen } from "../screens/RoomInspectionScreen";
 
 export function InspectionFlow() {
-  const [session, setSession] = useState<{ id: string; roomLabel: string } | null>(null);
+  const [session, setSession] = useState<{ id: string; roomLabel: string; hotelName: string } | null>(null);
 
   if (session) {
     return (
       <RoomInspectionScreen
         sessionId={session.id}
         roomLabel={session.roomLabel}
+        hotelName={session.hotelName}
         onDone={() => setSession(null)}
       />
     );
@@ -17,7 +18,7 @@ export function InspectionFlow() {
 
   return (
     <CheckInScreen
-      onCheckedIn={(id, roomLabel) => setSession({ id, roomLabel })}
+      onCheckedIn={(id, roomLabel, hotelName) => setSession({ id, roomLabel, hotelName })}
       onCancel={() => setSession(null)}
     />
   );

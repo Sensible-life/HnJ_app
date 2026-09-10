@@ -15,8 +15,11 @@ const ROOMS_BY_FLOOR: Record<string, string[]> = {
   "9F": ["901", "902", "903"],
 };
 
+// TODO: 실제 로그인 사용자의 담당 호텔로 교체 (현재는 단일 호텔 가정)
+const HOTEL_NAME = "그랜드 워커힐";
+
 type Props = {
-  onCheckedIn: (sessionId: string, roomLabel: string) => void;
+  onCheckedIn: (sessionId: string, roomLabel: string, hotelName: string) => void;
   onCancel: () => void;
 };
 
@@ -44,6 +47,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
       const now = new Date().toISOString();
       await createSession({
         id: sessionId,
+        hotel_name: HOTEL_NAME,
         room_label: roomLabel,
         type: "ROOM_PRO",
         status: "IN_PROGRESS",
@@ -65,7 +69,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         })),
       );
 
-      onCheckedIn(sessionId, roomLabel);
+      onCheckedIn(sessionId, roomLabel, HOTEL_NAME);
     } catch (err) {
       Alert.alert("체크인 실패", "다시 시도해주세요.");
     } finally {
