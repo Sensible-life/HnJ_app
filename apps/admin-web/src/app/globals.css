@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --background-subtle: #f5f6f8;
+  --foreground: #111827;
+  --foreground-secondary: #8a8f98;
+  --primary: #2f6fed;
+  --primary-soft: #eaf2ff;
+  --accent-coral: #f76c6c;
+  --accent-amber: #fdba5c;
+  --status-success: #16a34a;
+  --status-success-bg: #dcfce7;
+  --status-urgent: #dc2626;
+  --status-urgent-bg: #fee2e2;
+  --nav-active-bg: #111827;
+  --radius-card: 20px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
+  --color-foreground: var(--foreground);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent-coral: var(--accent-coral);
+  --color-accent-amber: var(--accent-amber);
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-urgent: var(--status-urgent);
+  --color-status-urgent-bg: var(--status-urgent-bg);
+  --color-nav-active-bg: var(--nav-active-bg);
+  --radius-card: var(--radius-card);
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', sans-serif;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

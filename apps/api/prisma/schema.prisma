@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  INSPECTOR
+  HOTEL_MANAGER
+  HQ_ADMIN
+}
+
+enum SessionType {
+  ROOM_PRO
+  BATH_PRO
+}
+
+enum SessionStatus {
+  IN_PROGRESS
+  COMPLETED
+  SYNCED_PENDING
+}
+
+enum CheckinMethod {
+  QR
+  NFC
+}
+
+enum ItemState {
+  UNSET
+  NORMAL
+  CAUTION
+  URGENT
+}
+
+enum MediaType {
+  BEFORE
+  AFTER
+  GENERAL
+}
+
+enum TicketStatus {
+  PENDING
+  APPROVED
+  REINSPECT_REQUESTED
+  RESOLVED
+}
+
+enum NotificationChannel {
+  ALIMTALK
+  PUSH
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+  CLICKED
+}
+
+model User {
+  id                String              @id @default(uuid())
+  name              String
+  email             String              @unique
+  phone             String?
+  passwordHash      String
+  role              Role
+  createdAt         DateTime            @default(now())
+  hotels            UserHotelMapping[]
+  inspections       InspectionSession[]
+  schedules         Schedule[]
+  approvedTickets   IssueTicket[]       @relation("ApprovedBy")
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Hotel {
+  id        String             @id @default(uuid())
+  name      String
+  address   String
+  region    String?
+  rooms     Room[]
+  schedules Schedule[]
+  managers  UserHotelMapping[]
+
+  @@map("hotels")
+}
+
+model UserHotelMapping {
+  id      String @id @default(uuid())
+  userId  String
+  hotelId String
+  user    User   @relation(fields: [userId], references: [id])
+  hotel   Hotel  @relation(fields: [hotelId], references: [id])
+
+  @@unique([userId, hotelId])
+  @@map("user_hotel_mappings")
+}
+
+model Room {
+  id          String              @id @default(uuid())
+  hotelId     String
+  building    String?
+  floor       String
+  roomNumber  String
+  qrTagId     String?             @unique
+  nfcTagId    String?             @unique
+  hotel       Hotel               @relation(fields: [hotelId], references: [id])
+  sessions    InspectionSession[]
+
+  @@map("rooms")
+}
+
+model InspectionSession {
+  id               String              @id @default(uuid())
+  roomId           String
+  inspectorId      String
+  parentSessionId  String?
+  type             SessionType
+  status           SessionStatus       @default(IN_PROGRESS)
+  checkinMethod    CheckinMethod
+  gpsLat           Float?
+  gpsLng           Float?
+  clientUuid       String?             @unique
+  startedAt        DateTime            @default(now())
+  completedAt      DateTime?
+  room             Room                @relation(fields: [roomId], references: [id])
+  inspector        User                @relation(fields: [inspectorId], references: [id])
+  parentSession    InspectionSession?  @relation("SessionLink", fields: [parentSessionId], references: [id])
+  childSessions    InspectionSession[] @relation("SessionLink")
+  items            InspectionItem[]
+  report           Report?
+
+  @@map("inspection_sessions")
+}
+
+model InspectionItem {
+  id         String            @id @default(uuid())
+  sessionId  String
+  category   String
+  itemName   String
+  state      ItemState         @default(UNSET)
+  comment    String?
+  sortOrder  Int               @default(0)
+  session    InspectionSession @relation(fields: [sessionId], references: [id])
+  media      Media[]
+  tickets    IssueTicket[]
+
+  @@map("inspection_items")
+}
+
+model Media {
+  id             String         @id @default(uuid())
+  itemId         String
+  url            String
+  mediaType      MediaType
+  watermarkMeta  Json?
+  markingData    Json?
+  uploadedAt     DateTime       @default(now())
+  item           InspectionItem @relation(fields: [itemId], references: [id])
+
+  @@map("media")
+}
+
+model IssueTicket {
+  id             String         @id @default(uuid())
+  itemId         String
+  status         TicketStatus   @default(PENDING)
+  repairMaterial String?
+  repairCost     Int?
+  revisitDate    DateTime?
+  approvedById   String?
+  approvedAt     DateTime?
+  comment        String?
+  item           InspectionItem @relation(fields: [itemId], references: [id])
+  approvedBy     User?          @relation("ApprovedBy", fields: [approvedById], references: [id])
+  notifications  Notification[]
+
+  @@map("issue_tickets")
+}
+
+model Report {
+  id          String            @id @default(uuid())
+  sessionId   String            @unique
+  pdfUrl      String?
+  webUrl      String?
+  generatedAt DateTime          @default(now())
+  session     InspectionSession @relation(fields: [sessionId], references: [id])
+
+  @@map("reports")
+}
+
+model Notification {
+  id            String              @id @default(uuid())
+  ticketId      String?
+  targetUserId  String
+  channel       NotificationChannel
+  status        NotificationStatus  @default(SENT)
+  actionToken   String?             @unique
+  sentAt        DateTime            @default(now())
+  ticket        IssueTicket?        @relation(fields: [ticketId], references: [id])
+  targetUser    User                @relation(fields: [targetUserId], references: [id])
+
+  @@map("notifications")
+}
+
+model Schedule {
+  id              String    @id @default(uuid())
+  hotelId         String
+  assignedUserId  String
+  visitsPerMonth  Int       @default(2)
+  nextVisitDate   DateTime?
+  lastVisitDate   DateTime?
+  hotel           Hotel     @relation(fields: [hotelId], references: [id])
+  assignedUser    User      @relation(fields: [assignedUserId], references: [id])
+
+  @@map("schedules")
+}
