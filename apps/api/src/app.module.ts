@@ -7,6 +7,10 @@ import { AppService } from './app.service.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { MediaModule } from './media/media.module.js';
+import { InspectionsModule } from './inspections/inspections.module.js';
+import { ReportsModule } from './reports/reports.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { TicketsModule } from './tickets/tickets.module.js';
 
 @Module({
   imports: [
@@ -18,6 +22,10 @@ import { MediaModule } from './media/media.module.js';
     PrismaModule,
     AuthModule,
     MediaModule,
+    ReportsModule,
+    NotificationsModule,
+    TicketsModule,
+    InspectionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

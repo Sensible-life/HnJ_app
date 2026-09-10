@@ -41,11 +41,12 @@
 
 
 ## Phase 4 — 리포트/알림
-- [ ] 점검 완료 시 웹 리포트 URL 자동 생성
-- [ ] PDF 리포트 자동 생성 (Puppeteer)
-- [ ] 카카오 알림톡 발송 연동 (긴급 건 발생 시)
-- [ ] 웹뷰 1-Click 승인/재점검 요청 페이지 (비로그인 접근)
-- [ ] FCM Push 발송 연동
+- [x] 점검 완료 시 웹 리포트 URL 자동 생성 (`POST /inspections/sync` → `/uploads/reports/<id>.html`)
+- [x] PDF 리포트 자동 생성 — Puppeteer 대신 pdfkit 사용 (이 환경 네트워크 정책상 Chromium 다운로드 불가, `report-pdf.util.ts`), 실제 PDF 확인 완료
+- [x] 카카오 알림톡 발송 연동 — 실제 API 키가 없어 콘솔 로그 MOCK으로 구현 (`notifications.service.ts`), 실 연동 시 이 파일만 교체하면 됨
+- [x] 웹뷰 1-Click 승인/재점검 요청 페이지 (비로그인 접근) — `GET/POST /approve/:token` (`tickets` 모듈)
+- [x] FCM Push 발송 연동 — 알림톡과 동일하게 MOCK 구현, Firebase Admin SDK 키 확보 후 교체 필요
+- [ ] 위 흐름을 실제 DB(Prisma)와 연결 — 현재는 인메모리 저장소(`TicketsStore`)로 임시 구현, Prisma Client 생성이 되는 환경에서 리포지토리로 교체 필요
 
 ## Phase 5 — BATH PRO 연동 + 이슈트래커
 - [ ] ROOM PRO '화장실' 항목 주의/긴급 선택 시 BATH PRO Bottom Sheet 연동
