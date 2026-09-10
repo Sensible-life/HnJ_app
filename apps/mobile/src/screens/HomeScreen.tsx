@@ -1,7 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
-import { colors, radius, spacing, shadow } from "../theme/tokens";
+import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { hp, moderateScale } from "../theme/responsive";
 
 const TASKS = [
   { room: "804호", hotel: "그랜드 워커힐", status: "urgent" as const, label: "긴급" },
@@ -44,9 +45,9 @@ export function HomeScreen({ navigation }: { navigation: { navigate: (name: stri
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: 120 },
-  header: { fontSize: 28, fontWeight: "700", color: colors.textPrimary },
-  subheader: { fontSize: 14, color: colors.textSecondary, marginTop: 2, marginBottom: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: hp(15) },
+  header: { fontSize: font.display, fontWeight: "700", color: colors.textPrimary },
+  subheader: { fontSize: font.base, color: colors.textSecondary, marginTop: moderateScale(2), marginBottom: spacing.lg },
   statRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   card: {
     backgroundColor: colors.card,
@@ -55,11 +56,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
     ...shadow.card,
   },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: colors.textPrimary },
-  cardHint: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: spacing.sm },
-  taskRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12 },
+  cardTitle: { fontSize: font.lg, fontWeight: "700", color: colors.textPrimary },
+  cardHint: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4) },
+  sectionTitle: { fontSize: font.xl, fontWeight: "700", color: colors.textPrimary, marginBottom: spacing.sm },
+  taskRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: moderateScale(12) },
   taskRowBorder: { borderTopWidth: 1, borderTopColor: colors.backgroundSubtle },
-  taskRoom: { fontSize: 14, fontWeight: "600", color: colors.textPrimary },
-  taskHint: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  taskRoom: { fontSize: font.base, fontWeight: "600", color: colors.textPrimary },
+  taskHint: { fontSize: font.xs, color: colors.textSecondary, marginTop: moderateScale(2) },
 });

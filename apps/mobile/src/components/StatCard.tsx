@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors, radius, shadow, spacing } from "../theme/tokens";
+import { colors, radius, shadow, spacing, font } from "../theme/tokens";
+import { moderateScale } from "../theme/responsive";
 
 type Props = {
   label: string;
@@ -19,6 +20,8 @@ export function StatCard({ label, value, icon = "●" }: Props) {
   );
 }
 
+const ICON_SIZE = moderateScale(40);
+
 const styles = StyleSheet.create({
   card: {
     flex: 1,
@@ -28,15 +31,15 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    borderRadius: ICON_SIZE / 2,
     backgroundColor: colors.primarySoft,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.sm,
   },
   icon: { color: colors.primary, fontWeight: "700" },
-  value: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  label: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  value: { fontSize: font.xxl, fontWeight: "700", color: colors.textPrimary },
+  label: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(2) },
 });

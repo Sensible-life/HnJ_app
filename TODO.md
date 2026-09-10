@@ -68,6 +68,9 @@
 - [ ] 앱스토어/플레이스토어 등록 및 심사 대응
 - [ ] 모니터링 도구 연동 (크래시/에러/알림 발송 실패 로그)
 
+## UI/반응형
+- [x] 모바일 앱 고정 px 대신 화면 비율 기반 스케일 유틸(`src/theme/responsive.ts`: wp/hp/scale/moderateScale) 도입, 모든 화면/컴포넌트에 적용
+
 ## 상시 항목
 - [ ] 요구사항 변경 시 SRS 및 이 문서 동기화
 - [ ] 매 Phase 종료 시 `BUILD_PLAN.md` DoD 기준 검토

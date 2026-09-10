@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors, radius } from "../theme/tokens";
+import { colors, radius, font } from "../theme/tokens";
+import { moderateScale } from "../theme/responsive";
 
 export type StatusTone = "success" | "caution" | "urgent";
 
@@ -19,6 +20,10 @@ export function StatusBadge({ label, tone }: { label: string; tone: StatusTone }
 }
 
 const styles = StyleSheet.create({
-  badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.pill },
-  text: { fontSize: 12, fontWeight: "600" },
+  badge: {
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(4),
+    borderRadius: radius.pill,
+  },
+  text: { fontSize: font.xs, fontWeight: "600" },
 });

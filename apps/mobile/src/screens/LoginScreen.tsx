@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
-import { colors, radius, spacing, shadow } from "../theme/tokens";
+import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { moderateScale } from "../theme/responsive";
 
 export function LoginScreen({ onLogin }: { onLogin: () => void }) {
   const [email, setEmail] = useState("");
@@ -55,24 +56,24 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     ...shadow.card,
   },
-  title: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  subtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.lg },
+  title: { fontSize: font.xxl, fontWeight: "700", color: colors.textPrimary },
+  subtitle: { fontSize: font.base, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.lg },
   field: { marginBottom: spacing.md },
-  fieldLabel: { fontSize: 13, fontWeight: "600", color: colors.textPrimary, marginBottom: 6 },
+  fieldLabel: { fontSize: font.sm, fontWeight: "600", color: colors.textPrimary, marginBottom: moderateScale(6) },
   input: {
     backgroundColor: colors.backgroundSubtle,
     borderRadius: radius.input,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    fontSize: 15,
+    paddingVertical: moderateScale(12),
+    fontSize: font.md,
     color: colors.textPrimary,
   },
   button: {
     marginTop: spacing.sm,
     backgroundColor: colors.navActiveBg,
     borderRadius: radius.pill,
-    paddingVertical: 14,
+    paddingVertical: moderateScale(14),
     alignItems: "center",
   },
-  buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: font.md },
 });

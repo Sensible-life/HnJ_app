@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors } from "../theme/tokens";
+import { colors, font } from "../theme/tokens";
 
 export function PlaceholderScreen({ title }: { title: string }) {
   return (
@@ -11,5 +11,5 @@ export function PlaceholderScreen({ title }: { title: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" },
-  text: { color: colors.textSecondary, fontSize: 15 },
+  text: { color: colors.textSecondary, fontSize: font.md },
 });

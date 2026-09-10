@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { colors, radius, spacing, shadow } from "../theme/tokens";
+import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
 import { getItemsForSession, updateItemState, completeSession, insertMedia, LocalItem } from "../lib/db";
 import { syncPendingSessions } from "../lib/sync";
@@ -132,12 +133,12 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: 140 },
-  header: { fontSize: 22, fontWeight: "700", color: colors.textPrimary },
-  subheader: { fontSize: 13, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.sm },
+  content: { padding: spacing.lg, paddingBottom: hp(17) },
+  header: { fontSize: font.xxl, fontWeight: "700", color: colors.textPrimary },
+  subheader: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.sm },
   progressTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: moderateScale(8),
+    borderRadius: moderateScale(4),
     backgroundColor: colors.backgroundSubtle,
     overflow: "hidden",
     marginBottom: spacing.lg,
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow.card,
   },
-  itemTitle: { fontSize: 14, fontWeight: "600", color: colors.textPrimary },
-  photoHint: { marginTop: spacing.sm, fontSize: 12, color: colors.statusUrgent },
+  itemTitle: { fontSize: font.base, fontWeight: "600", color: colors.textPrimary },
+  photoHint: { marginTop: spacing.sm, fontSize: font.xs, color: colors.statusUrgent },
   bottomBar: {
     position: "absolute",
     left: 0,
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
   },
   draftButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: moderateScale(14),
     borderRadius: radius.pill,
     backgroundColor: colors.backgroundSubtle,
     alignItems: "center",
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   draftButtonText: { fontWeight: "700", color: colors.textPrimary },
   completeButton: {
     flex: 2,
-    paddingVertical: 14,
+    paddingVertical: moderateScale(14),
     borderRadius: radius.pill,
     backgroundColor: colors.navActiveBg,
     alignItems: "center",

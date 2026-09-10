@@ -2,7 +2,8 @@ import { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
-import { colors, radius, spacing, shadow } from "../theme/tokens";
+import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { hp, moderateScale } from "../theme/responsive";
 import { createSession, insertItems } from "../lib/db";
 import { ROOM_PRO_ITEMS } from "../data/inspectionItems";
 
@@ -173,15 +174,15 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   center: { alignItems: "center", justifyContent: "center" },
-  content: { padding: spacing.lg, paddingBottom: 60 },
-  back: { color: colors.primary, fontSize: 14, marginBottom: spacing.md },
-  header: { fontSize: 26, fontWeight: "700", color: colors.textPrimary },
-  subheader: { fontSize: 13, color: colors.textSecondary, marginTop: 4, marginBottom: spacing.lg },
+  content: { padding: spacing.lg, paddingBottom: hp(8) },
+  back: { color: colors.primary, fontSize: font.base, marginBottom: spacing.md },
+  header: { fontSize: font.display, fontWeight: "700", color: colors.textPrimary },
+  subheader: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.lg },
   hint: { color: colors.textSecondary, marginBottom: spacing.md },
   quickRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   quickButton: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: moderateScale(14),
     borderRadius: radius.card,
     backgroundColor: colors.card,
     alignItems: "center",
@@ -190,11 +191,11 @@ const styles = StyleSheet.create({
   quickPrimary: { backgroundColor: colors.primary },
   quickText: { fontWeight: "700", color: colors.textPrimary },
   quickPrimaryText: { fontWeight: "700", color: "#FFFFFF" },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: colors.textPrimary, marginBottom: spacing.sm },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: spacing.lg },
+  sectionTitle: { fontSize: font.md, fontWeight: "700", color: colors.textPrimary, marginBottom: spacing.sm },
+  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: moderateScale(8), marginBottom: spacing.lg },
   pill: {
-    paddingVertical: 10,
-    paddingHorizontal: 18,
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: moderateScale(18),
     borderRadius: radius.pill,
     backgroundColor: colors.backgroundSubtle,
   },
@@ -204,18 +205,18 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: colors.navActiveBg,
     borderRadius: radius.pill,
-    paddingVertical: 14,
+    paddingVertical: moderateScale(14),
     alignItems: "center",
   },
   disabledButton: { opacity: 0.4 },
-  primaryButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 15 },
+  primaryButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: font.md },
   scanCancel: {
     position: "absolute",
-    bottom: 40,
+    bottom: hp(5),
     alignSelf: "center",
     backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: moderateScale(20),
+    paddingVertical: moderateScale(12),
     borderRadius: radius.pill,
   },
   scanCancelText: { color: "#FFFFFF", fontWeight: "600" },

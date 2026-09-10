@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { colors, radius } from "../theme/tokens";
+import { colors, radius, font } from "../theme/tokens";
+import { moderateScale } from "../theme/responsive";
 
 export type ItemState = "UNSET" | "NORMAL" | "CAUTION" | "URGENT";
 
@@ -44,14 +45,14 @@ export function ThreeStateToggle({
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 8, marginTop: 8 },
+  row: { flexDirection: "row", gap: moderateScale(8), marginTop: moderateScale(8) },
   button: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: moderateScale(10),
     borderRadius: radius.input,
     backgroundColor: colors.backgroundSubtle,
     alignItems: "center",
   },
-  label: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+  label: { fontSize: font.sm, fontWeight: "600", color: colors.textSecondary },
   labelActive: { color: "#FFFFFF" },
 });

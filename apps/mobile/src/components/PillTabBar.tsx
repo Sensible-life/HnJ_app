@@ -1,7 +1,8 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { colors, radius, shadow } from "../theme/tokens";
+import { colors, radius, shadow, layout, font } from "../theme/tokens";
+import { moderateScale } from "../theme/responsive";
 
 const ICONS: Record<string, string> = {
   Home: "⌂",
@@ -14,7 +15,7 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: insets.bottom || 12 }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom || moderateScale(12) }]}>
       <View style={styles.pillContainer}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -47,12 +48,17 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16, bottom: 0 },
+  wrap: {
+    position: "absolute",
+    left: layout.bottomNavSideMargin,
+    right: layout.bottomNavSideMargin,
+    bottom: 0,
+  },
   pillContainer: {
     flexDirection: "row",
     backgroundColor: colors.card,
     borderRadius: radius.pill,
-    padding: 6,
+    padding: moderateScale(6),
     justifyContent: "space-between",
     ...shadow.card,
   },
@@ -60,13 +66,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: moderateScale(10),
+    paddingHorizontal: moderateScale(14),
     borderRadius: radius.pill,
     flex: 1,
   },
   tabActive: { backgroundColor: colors.navActiveBg },
-  icon: { fontSize: 18, color: colors.textSecondary },
+  icon: { fontSize: font.lg, color: colors.textSecondary },
   iconActive: { color: "#FFFFFF" },
-  labelActive: { color: "#FFFFFF", marginLeft: 6, fontWeight: "600", fontSize: 13 },
+  labelActive: { color: "#FFFFFF", marginLeft: moderateScale(6), fontWeight: "600", fontSize: font.sm },
 });
