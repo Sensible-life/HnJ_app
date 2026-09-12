@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getItemsForSession, updateItemState, completeSession, insertMedia, LocalItem } from "../lib/db";
 import { syncPendingSessions } from "../lib/sync";
 import { uploadPendingMedia } from "../lib/mediaSync";
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }: Props) {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<LocalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -94,7 +96,12 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(17) },
+        ]}
+      >
         <Text style={styles.header}>{roomLabel} 점검 진행 중</Text>
         <Text style={styles.subheader}>
           {completedCount}/{items.length} · {progress}% 완료
@@ -119,7 +126,7 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
         ))}
       </ScrollView>
 
-      <View style={styles.bottomBar}>
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
         <TouchableOpacity style={styles.draftButton} onPress={handleSaveDraft}>
           <Text style={styles.draftButtonText}>임시 저장</Text>
         </TouchableOpacity>
@@ -133,7 +140,7 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: hp(17) },
+  content: { paddingHorizontal: spacing.lg },
   header: { fontSize: font.xxl, fontWeight: "700", color: colors.textPrimary },
   subheader: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.sm },
   progressTrack: {
@@ -160,7 +167,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     flexDirection: "row",
     gap: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
     backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.backgroundSubtle,

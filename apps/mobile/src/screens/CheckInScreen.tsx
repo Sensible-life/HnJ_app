@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
+  const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanMode, setScanMode] = useState(false);
   const [floor, setFloor] = useState(FLOORS[0]);
@@ -89,7 +91,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
     if (!permission) return <View style={styles.screen} />;
     if (!permission.granted) {
       return (
-        <View style={[styles.screen, styles.center]}>
+        <View style={[styles.screen, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <Text style={styles.hint}>카메라 권한이 필요합니다</Text>
           <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
             <Text style={styles.primaryButtonText}>권한 허용</Text>
@@ -107,7 +109,10 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
             startCheckIn(data || "QR-스캔객실", "QR");
           }}
         />
-        <TouchableOpacity style={styles.scanCancel} onPress={() => setScanMode(false)}>
+        <TouchableOpacity
+          style={[styles.scanCancel, { bottom: insets.bottom + hp(5) }]}
+          onPress={() => setScanMode(false)}
+        >
           <Text style={styles.scanCancelText}>취소</Text>
         </TouchableOpacity>
       </View>
@@ -115,7 +120,13 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(8) },
+      ]}
+    >
       <TouchableOpacity onPress={onCancel}>
         <Text style={styles.back}>{"< 뒤로"}</Text>
       </TouchableOpacity>
@@ -174,7 +185,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   center: { alignItems: "center", justifyContent: "center" },
-  content: { padding: spacing.lg, paddingBottom: hp(8) },
+  content: { paddingHorizontal: spacing.lg },
   back: { color: colors.primary, fontSize: font.base, marginBottom: spacing.md },
   header: { fontSize: font.display, fontWeight: "700", color: colors.textPrimary },
   subheader: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.lg },
@@ -212,7 +223,6 @@ const styles = StyleSheet.create({
   primaryButtonText: { color: "#FFFFFF", fontWeight: "700", fontSize: font.md },
   scanCancel: {
     position: "absolute",
-    bottom: hp(5),
     alignSelf: "center",
     backgroundColor: "rgba(0,0,0,0.6)",
     paddingHorizontal: moderateScale(20),

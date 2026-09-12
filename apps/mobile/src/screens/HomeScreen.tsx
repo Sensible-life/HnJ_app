@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatCard } from "../components/StatCard";
 import { StatusBadge } from "../components/StatusBadge";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
@@ -11,8 +12,16 @@ const TASKS = [
 ];
 
 export function HomeScreen({ navigation }: { navigation: { navigate: (name: string) => void } }) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={[
+        styles.content,
+        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(15) },
+      ]}
+    >
       <Text style={styles.header}>오늘의 할 일</Text>
       <Text style={styles.subheader}>2026년 9월 10일 · 목요일</Text>
 
@@ -45,7 +54,7 @@ export function HomeScreen({ navigation }: { navigation: { navigate: (name: stri
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: hp(15) },
+  content: { paddingHorizontal: spacing.lg },
   header: { fontSize: font.display, fontWeight: "700", color: colors.textPrimary },
   subheader: { fontSize: font.base, color: colors.textSecondary, marginTop: moderateScale(2), marginBottom: spacing.lg },
   statRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
