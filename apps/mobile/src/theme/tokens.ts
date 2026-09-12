@@ -46,12 +46,13 @@ export const font = {
 };
 
 export const shadow = {
+  // Figma: X 10 / Y 14 / Blur 56 / #000 12%
   card: {
     shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: moderateScale(16),
-    shadowOffset: { width: 0, height: moderateScale(4) },
-    elevation: 3,
+    shadowOpacity: 0.12,
+    shadowRadius: moderateScale(28), // blur(56)의 절반 — RN shadowRadius는 CSS blur의 대략 1/2에 해당
+    shadowOffset: { width: moderateScale(10), height: moderateScale(14) },
+    elevation: 10, // Android는 offset/blur를 못 받아 elevation으로 유사하게 근사
   },
 };
 
