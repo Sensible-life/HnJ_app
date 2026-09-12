@@ -15,7 +15,7 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: insets.bottom || moderateScale(12) }]}>
+    <View style={[styles.wrap, { paddingBottom: insets.bottom + moderateScale(12) }]}>
       <View style={styles.pillContainer}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
