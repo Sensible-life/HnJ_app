@@ -46,9 +46,10 @@ export const font = {
 };
 
 export const shadow = {
-  // Figma: X 10 / Y 14 / Blur 56 / #000 12% — 다만 실제 렌더에서 너무 떠 보여서 opacity/elevation을 낮춤
+  // Figma: X 10 / Y 14 / Blur 56 / #000 12% — 실제 렌더에서 너무 떠 보여서 opacity/elevation을 낮추고,
+  // 순수 검정 대신 슬레이트 톤으로 바꿔 더 은은하게 조정
   card: {
-    shadowColor: "#000",
+    shadowColor: "#1E293B",
     shadowOpacity: 0.07,
     shadowRadius: moderateScale(28), // blur(56)의 절반 — RN shadowRadius는 CSS blur의 대략 1/2에 해당
     shadowOffset: { width: moderateScale(10), height: moderateScale(14) },
