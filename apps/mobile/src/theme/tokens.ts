@@ -46,13 +46,13 @@ export const font = {
 };
 
 export const shadow = {
-  // Figma: X 10 / Y 14 / Blur 56 / #000 12%
+  // Figma: X 10 / Y 14 / Blur 56 / #000 12% — 다만 실제 렌더에서 너무 떠 보여서 opacity/elevation을 낮춤
   card: {
     shadowColor: "#000",
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.07,
     shadowRadius: moderateScale(28), // blur(56)의 절반 — RN shadowRadius는 CSS blur의 대략 1/2에 해당
     shadowOffset: { width: moderateScale(10), height: moderateScale(14) },
-    elevation: 10, // Android는 offset/blur를 못 받아 elevation으로 유사하게 근사
+    elevation: 5, // Android는 offset/blur를 못 받아 elevation으로 유사하게 근사 (더 낮춰서 붕 뜨는 느낌 완화)
   },
 };
 
