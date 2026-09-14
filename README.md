@@ -80,8 +80,20 @@ npm run dev:mobile  # 모바일 앱 (Expo)
 ## 문서
 
 - [`BUILD_PLAN.md`](./BUILD_PLAN.md) — 단계별 빌드 계획, 아키텍처, 일정
-- [`TODO.md`](./TODO.md) — Phase별 실행 태스크 체크리스트
+- [`TODO.md`](./TODO.md) — Phase별 실행 태스크 체크리스트 (Phase 0~7 진행 상황)
 - [`docs/ERD.md`](./docs/ERD.md) — 데이터 모델 ERD (Draft)
 - [`docs/API_SPEC.md`](./docs/API_SPEC.md) — API 명세서 (Draft)
 - [`docs/DESIGN_TOKENS.md`](./docs/DESIGN_TOKENS.md) — 디자인 톤앤매너/컬러/컴포넌트 패턴
+- [`docs/QA_CHECKLIST.md`](./docs/QA_CHECKLIST.md) — Phase 7 QA/보안/배포 체크리스트 (구현 완료 vs 실제 사람이 해야 할 일 구분)
 - `docs/[SRS] ...v2.0.md` — 원본 요구사항 정의서
+
+## 현재 진행 상태 (Phase 0~7)
+
+Phase 0~7 전 단계에 걸쳐 기능 스캐폴딩이 되어 있습니다 (모바일 앱 전체 점검 플로우 + BATH PRO 연동 + 관리자 웹
++ 보안/모니터링/E2E 테스트까지). 다만 이 개발 환경은 네트워크 정책상 일부 외부 서비스에 접근할 수 없어
+아래 항목들은 **다른(제약 없는) 환경에서 사람이 직접 수행**해야 합니다:
+
+- `npx prisma generate` — DB 연동 (Prisma 엔진 바이너리 다운로드 차단됨, 현재 인메모리 Store로 대체 구현)
+- 카카오 알림톡 / FCM Push 실제 API 키 연동 (현재 console.log mock)
+- 실기기(iOS/Android) QA, 앱스토어/플레이스토어 등록, 실제 TLS 인증서 구성
+- 자세한 항목별 구분은 [`docs/QA_CHECKLIST.md`](./docs/QA_CHECKLIST.md) 참고
