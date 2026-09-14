@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'node:path';
@@ -13,6 +13,8 @@ import { HotelsModule } from './hotels/hotels.module.js';
 import { UsersModule } from './users/users.module.js';
 import { SchedulesModule } from './schedules/schedules.module.js';
 import { StatsModule } from './stats/stats.module.js';
+import { LogsModule } from './logs/logs.module.js';
+import { RateLimitMiddleware } from './common/middleware/rate-limit.middleware.js';
 
 // NOTE: PrismaModule / AuthModule은 여기서 잠시 제외했다.
 // PrismaClient가 이 개발 환경 네트워크 정책상 아직 `prisma generate`로 생성되지 못했는데,
@@ -38,8 +40,19 @@ import { StatsModule } from './stats/stats.module.js';
     UsersModule,
     SchedulesModule,
     StatsModule,
+    LogsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // 오프라인 동기화/업로드 엔드포인트만 레이트리밋 (Phase 7 보안 점검 항목)
+    consumer
+      .apply(RateLimitMiddleware)
+      .forRoutes(
+        { path: 'inspections/sync', method: RequestMethod.POST },
+        { path: 'media/upload', method: RequestMethod.POST },
+      );
+  }
+}

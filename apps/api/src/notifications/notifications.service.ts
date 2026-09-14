@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { NotificationLogStore } from './notification-log.store.js';
 
 export interface AlimtalkPayload {
   targetName: string;
@@ -25,17 +26,53 @@ export interface PushPayload {
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
+  constructor(private readonly notificationLog: NotificationLogStore) {}
+
   async sendAlimtalk(payload: AlimtalkPayload): Promise<{ sent: boolean }> {
     // TODO: Solapi/NHN Cloud 알림톡 API 연동으로 교체
-    this.logger.log(
-      `[알림톡 MOCK] ${payload.targetName}님께 발송: "${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}" 긴급 발생. 확인: ${payload.actionUrl}`,
-    );
-    return { sent: true };
+    try {
+      this.logger.log(
+        `[알림톡 MOCK] ${payload.targetName}님께 발송: "${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}" 긴급 발생. 확인: ${payload.actionUrl}`,
+      );
+      this.notificationLog.record({
+        channel: 'ALIMTALK',
+        target: payload.targetName,
+        summary: `${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}`,
+        status: 'SENT',
+      });
+      return { sent: true };
+    } catch (err) {
+      this.notificationLog.record({
+        channel: 'ALIMTALK',
+        target: payload.targetName,
+        summary: `${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}`,
+        status: 'FAILED',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
   }
 
   async sendPush(payload: PushPayload): Promise<{ sent: boolean }> {
     // TODO: Firebase Admin SDK(FCM) 연동으로 교체
-    this.logger.log(`[Push MOCK] user=${payload.targetUserId} title="${payload.title}" body="${payload.body}"`);
-    return { sent: true };
+    try {
+      this.logger.log(`[Push MOCK] user=${payload.targetUserId} title="${payload.title}" body="${payload.body}"`);
+      this.notificationLog.record({
+        channel: 'PUSH',
+        target: payload.targetUserId,
+        summary: payload.title,
+        status: 'SENT',
+      });
+      return { sent: true };
+    } catch (err) {
+      this.notificationLog.record({
+        channel: 'PUSH',
+        target: payload.targetUserId,
+        summary: payload.title,
+        status: 'FAILED',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
   }
 }

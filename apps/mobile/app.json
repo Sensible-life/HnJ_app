@@ -18,6 +18,17 @@
         {
           "locationAlwaysAndWhenInUsePermission": "체크인한 위치가 실제 객실 위치와 맞는지 확인하기 위해 위치 권한이 필요합니다."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26
+          },
+          "ios": {
+            "deploymentTarget": "15.1"
+          }
+        }
       ]
     ],
     "ios": {

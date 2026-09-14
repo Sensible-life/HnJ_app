@@ -55,19 +55,30 @@
 - [x] 이슈 상태 추적(진행중/완료/미완료) 화면 (`IssueTrackerScreen`, 모바일 "이슈" 탭) — 현재는 로컬 SQLite의 주의/긴급 항목을 기준으로 상태를 근사 표시, 실제 DB 연동 후 IssueTicket.status 기준으로 교체 필요
 
 ## Phase 6 — 관리자 웹 고도화
-- [ ] 일정 관리 (호텔별 정기 방문 주기 자동 생성, 담당자 배정, 미방문 알림)
-- [ ] 사용자/권한 관리 화면
-- [ ] 통계 대시보드 (일일/월간, 청소 불량률, 문제 유형별 분석 그래프)
-- [ ] 객실 타임라인 피드 + Before/After 스플릿 슬라이더
-- [ ] Quick-Draw 마킹 도구 (사진 위 화살표/원 오버레이)
+- [x] 일정 관리 — `/schedule`: 호텔/담당자/월 방문횟수로 일정 자동 생성(다음 방문일 자동 계산), 담당자 재배정, 미방문(overdue) 알림 배지. 백엔드 `SchedulesStore`(인메모리) + `GET/POST/PATCH /schedules`
+- [x] 사용자/권한 관리 화면 — `/users`: 목록 + role 배지 + 생성 폼(담당 호텔 다중 선택). 백엔드 `UsersStore` + `GET/POST/PATCH /admin/users`
+- [x] 통계 대시보드 — `/` 재작성: 오늘/월간 점검 수, 긴급 미조치, 청소 불량률 스탯카드 + 최근 7일 추이 막대그래프 + 문제 유형별 도넛차트 + 호텔별 요약 (차트는 외부 라이브러리 없이 순수 SVG). 백엔드 `GET /admin/stats/dashboard` (`StatsController`, `InspectionsStore` 집계)
+- [x] 객실 타임라인 피드 + Before/After 스플릿 슬라이더 — `/rooms`: 객실 선택 → 점검 이력 타임라인(항목 상태 배지, 리포트 링크) + clip-path 기반 비교 슬라이더. 백엔드 `InspectionsStore`(`/inspections`, `/inspections/room`) + `MediaStore`(`/media?hotelName&roomLabel`, 모바일 `mediaSync.ts`가 sessionId/itemId/mediaType 함께 전송하도록 확장)
+- [x] Quick-Draw 마킹 도구 (사진 위 화살표/원 오버레이) — `/rooms`의 `QuickDrawCanvas`: 캔버스 2장(이미지+드로잉)으로 화살표/원 마킹, 실행취소/전체지우기 지원 (현재는 세션 내 캔버스 상태만 — 마킹 결과 서버 저장은 TODO)
 
 ## Phase 7 — QA/최적화/배포
-- [ ] 성능 테스트: 3G/LTE 환경 2초 이내 응답 확인
-- [ ] 보안 점검: HTTPS/TLS 1.3, 오프라인 데이터 암호화 확인
-- [ ] 실기기 테스트 (iOS 14 / Android 8.0 최소 버전)
-- [ ] E2E 시나리오 자동화 (체크인→점검→리포트→승인)
-- [ ] 앱스토어/플레이스토어 등록 및 심사 대응
-- [ ] 모니터링 도구 연동 (크래시/에러/알림 발송 실패 로그)
+> 세부 근거/실측 결과/실제 사람이 해야 할 일은 `docs/QA_CHECKLIST.md` 참고.
+- [x] 성능 테스트 — `apps/api/scripts/perf-smoke.mjs`(`npm run perf:smoke`)로 핵심 엔드포인트 p50/p95 측정,
+      전부 2초 예산 대비 압도적 여유(p95 30ms 미만). 실제 3G/LTE RTT까지 포함한 측정은 실기기/DevTools 스로틀링 필요(미완료, 사람 필요)
+- [x] 보안 점검 — helmet 보안 헤더, 전역 ValidationPipe, GlobalExceptionFilter, IP 기준 레이트리밋(분당 60회,
+      429 확인됨), CORS ALLOWED_ORIGIN 환경변수화. HTTPS/TLS 1.3은 배포 인프라 영역이라 이 환경에서 구성 불가(미완료,
+      사람 필요). 오프라인 SQLite 암호화는 Expo Go 제약으로 미구현 — dev client 전환 여부 결정 필요(미완료, 사람 필요)
+- [x] 실기기 테스트 — `app.json`에 `expo-build-properties`로 Android minSdkVersion=26(8.0), iOS
+      deploymentTarget=15.1 설정(iOS 14는 Expo SDK 57 자체가 미지원이라 대체값, 정책 재확인 필요). 실제 기기 실행/캡처는
+      물리 기기가 있어야 해서 이 환경에서 불가(미완료, 사람 필요) — 체크리스트는 QA_CHECKLIST.md에 정리
+- [x] E2E 시나리오 자동화 — `apps/api/test/inspection-flow.e2e-spec.ts` (`npm run test:e2e`), 8개 테스트 통과:
+      동기화→리포트 생성/저장→알림톡 mock 발송→승인 티켓→1-Click 승인 웹뷰→통계 반영까지 전 구간 검증
+- [ ] 앱스토어/플레이스토어 등록 및 심사 대응 — 계정 가입/서류/실제 제출이 필요해 이 세션에서 수행 불가. 준비
+      체크리스트만 QA_CHECKLIST.md에 정리해둠(미완료, 사람 필요)
+- [x] 모니터링 도구 연동 — 서버: GlobalExceptionFilter(예외 구조화 로깅), NotificationLogStore(`GET
+      /admin/notifications/log`, 알림 발송 성공/실패 기록), ClientErrorStore(`POST /logs/client-error`, `GET
+      /admin/logs/client-errors`). 모바일: ErrorBoundary + 전역 JS 예외/Promise rejection 리포팅. 전부 curl로
+      동작 확인 완료. 실서비스 연동(Sentry 등)은 계정/DSN 필요(미완료, 사람 필요)
 
 ## UI/반응형
 - [x] 모바일 앱 고정 px 대신 화면 비율 기반 스케일 유틸(`src/theme/responsive.ts`: wp/hp/scale/moderateScale) 도입, 모든 화면/컴포넌트에 적용
