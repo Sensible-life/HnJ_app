@@ -69,7 +69,8 @@
       429 확인됨), CORS ALLOWED_ORIGIN 환경변수화. HTTPS/TLS 1.3은 배포 인프라 영역이라 이 환경에서 구성 불가(미완료,
       사람 필요). 오프라인 SQLite 암호화는 Expo Go 제약으로 미구현 — dev client 전환 여부 결정 필요(미완료, 사람 필요)
 - [x] 실기기 테스트 — `app.json`에 `expo-build-properties`로 Android minSdkVersion=26(8.0), iOS
-      deploymentTarget=15.1 설정(iOS 14는 Expo SDK 57 자체가 미지원이라 대체값, 정책 재확인 필요). 실제 기기 실행/캡처는
+      deploymentTarget=16.4 설정(처음 15.1로 넣었다가 `expo start` 실행 시 에러로 실제 하한이 16.4임을 확인해
+      수정 — iOS 14/15는 Expo SDK 57 자체가 미지원, 정책 재확인 필요). 실제 기기 실행/캡처는
       물리 기기가 있어야 해서 이 환경에서 불가(미완료, 사람 필요) — 체크리스트는 QA_CHECKLIST.md에 정리
 - [x] E2E 시나리오 자동화 — `apps/api/test/inspection-flow.e2e-spec.ts` (`npm run test:e2e`), 8개 테스트 통과:
       동기화→리포트 생성/저장→알림톡 mock 발송→승인 티켓→1-Click 승인 웹뷰→통계 반영까지 전 구간 검증

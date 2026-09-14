@@ -48,11 +48,12 @@
 
 **구현/검증 완료**
 - `app.json`에 `expo-build-properties` 플러그인 추가: `android.minSdkVersion: 26`(Android 8.0),
-  `ios.deploymentTarget: "15.1"`.
-- ⚠️ **주의**: SRS 목표는 iOS 14였지만, 현재 쓰는 Expo SDK 57(React Native 신아키텍처 기본 활성화) 자체가
-  iOS 14를 지원하지 않는다(빌드 타임에 실패함). 그래서 이 SDK로 강제 가능한 현실적 최소값인 15.1을 넣었다.
-  iOS 14 지원이 꼭 필요하다면 Expo SDK를 낮추거나(구형 RN 아키텍처), iOS 14 지원을 포기하는 두 선택지 중
-  사람이 결정해야 한다.
+  `ios.deploymentTarget: "16.4"`.
+- ⚠️ **주의**: SRS 목표는 iOS 14였지만, 실제로 `npx expo start`를 돌려보니 Expo SDK 57은 iOS 16.4 미만을
+  아예 허용하지 않는다(처음엔 15.1로 넣었다가 `ios.deploymentTarget needs to be at least version 16.4`
+  에러로 실기기에서 확인됨 — 문서만으로 짐작하지 않고 실행해서 정확한 하한을 확정했다). iOS 14/15 지원이
+  꼭 필요하다면 Expo SDK를 낮추거나(구형 RN 아키텍처), iOS 16.4+ 로 타깃을 올리는 두 선택지 중 사람이
+  결정해야 한다 — SRS 재검토 필요.
 
 **실제 사람이 확인해야 하는 것 (물리 기기 필요)**
 아래는 실기기에서 수동으로 체크해야 하는 항목 — 이 클라우드 컨테이너에는 iOS/Android 실기기도, macOS의
