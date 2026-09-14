@@ -2,6 +2,43 @@ import * as SQLite from "expo-sqlite";
 
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
+// FR: 기존에 앱을 설치해 로컬 SQLite 파일(hnjapp.db)이 이미 만들어진 기기에서는
+// `CREATE TABLE IF NOT EXISTS`가 테이블을 다시 만들어주지 않아, 이후 버전에서 추가된 컬럼이
+// 없는 채로 남는다("no such column" 에러의 원인). 기존 테이블에 없는 컬럼을 안전하게 추가한다.
+async function ensureColumns(
+  db: SQLite.SQLiteDatabase,
+  table: string,
+  columns: { name: string; ddl: string }[],
+) {
+  const existing = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+  const existingNames = new Set(existing.map((c) => c.name));
+  for (const col of columns) {
+    if (!existingNames.has(col.name)) {
+      await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${col.ddl}`);
+    }
+  }
+}
+
+async function migrate(db: SQLite.SQLiteDatabase) {
+  await ensureColumns(db, "sessions", [
+    { name: "inspector_name", ddl: "inspector_name TEXT" },
+    { name: "service_type", ddl: "service_type TEXT" },
+    { name: "inspector_opinion", ddl: "inspector_opinion TEXT" },
+    { name: "room_type", ddl: "room_type TEXT" },
+    { name: "cleaning_team", ddl: "cleaning_team TEXT" },
+    { name: "cleaning_completed_at", ddl: "cleaning_completed_at TEXT" },
+    { name: "lost_item_found", ddl: "lost_item_found INTEGER NOT NULL DEFAULT 0" },
+    { name: "lost_item_location", ddl: "lost_item_location TEXT" },
+  ]);
+  await ensureColumns(db, "inspection_items", [
+    { name: "problem_description", ddl: "problem_description TEXT" },
+    { name: "action_description", ddl: "action_description TEXT" },
+    { name: "requires_hotel_approval", ddl: "requires_hotel_approval INTEGER NOT NULL DEFAULT 0" },
+    { name: "issue_type", ddl: "issue_type TEXT" },
+  ]);
+  await ensureColumns(db, "media", [{ name: "media_kind", ddl: "media_kind TEXT NOT NULL DEFAULT 'IMAGE'" }]);
+}
+
 function getDb() {
   if (!dbPromise) {
     dbPromise = SQLite.openDatabaseAsync("hnjapp.db").then(async (db) => {
@@ -19,15 +56,7 @@ function getDb() {
           gps_lng REAL,
           started_at TEXT NOT NULL,
           completed_at TEXT,
-          synced INTEGER NOT NULL DEFAULT 0,
-          inspector_name TEXT,
-          service_type TEXT,
-          inspector_opinion TEXT,
-          room_type TEXT,
-          cleaning_team TEXT,
-          cleaning_completed_at TEXT,
-          lost_item_found INTEGER NOT NULL DEFAULT 0,
-          lost_item_location TEXT
+          synced INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS inspection_items (
           id TEXT PRIMARY KEY NOT NULL,
@@ -39,11 +68,7 @@ function getDb() {
           photo_count INTEGER NOT NULL DEFAULT 0,
           repair_material TEXT,
           repair_cost INTEGER,
-          revisit_date TEXT,
-          problem_description TEXT,
-          action_description TEXT,
-          requires_hotel_approval INTEGER NOT NULL DEFAULT 0,
-          issue_type TEXT
+          revisit_date TEXT
         );
         CREATE TABLE IF NOT EXISTS media (
           id TEXT PRIMARY KEY NOT NULL,
@@ -51,7 +76,6 @@ function getDb() {
           session_id TEXT NOT NULL,
           local_uri TEXT NOT NULL,
           media_type TEXT NOT NULL DEFAULT 'GENERAL',
-          media_kind TEXT NOT NULL DEFAULT 'IMAGE',
           hotel_name TEXT NOT NULL,
           room_label TEXT NOT NULL,
           captured_at TEXT NOT NULL,
@@ -59,6 +83,7 @@ function getDb() {
           synced INTEGER NOT NULL DEFAULT 0
         );
       `);
+      await migrate(db);
       return db;
     });
   }
