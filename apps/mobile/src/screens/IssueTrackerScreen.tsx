@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, RefreshControl } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from "react-native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
@@ -28,6 +28,8 @@ const STATUS_COLOR: Record<TrackStatus, { fg: string; bg: string }> = {
 
 export function IssueTrackerScreen() {
   const insets = useSafeAreaInsets();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 탭 내비게이터 params 타입은 InspectionFlow에서 관리
+  const navigation = useNavigation<any>();
   const [items, setItems] = useState<IssueItemRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -72,8 +74,23 @@ export function IssueTrackerScreen() {
         renderItem={({ item }) => {
           const status = deriveStatus(item);
           const color = STATUS_COLOR[status];
+          // FR-이슈트래커: 항목을 탭하면 그 항목이 속한 점검 세션(ROOM PRO/BATH PRO)을 이어서 열어
+          // 문제/조치 내용, 수리 정보, 호텔 승인 필요 여부 등을 바로 수정할 수 있게 한다.
           return (
-            <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.7}
+              onPress={() =>
+                navigation.navigate("Inspection", {
+                  resume: {
+                    id: item.session_id,
+                    roomLabel: item.room_label,
+                    hotelName: item.hotel_name,
+                    type: item.session_type,
+                  },
+                })
+              }
+            >
               <View style={styles.cardTop}>
                 <Text style={styles.roomLabel}>
                   {item.hotel_name} · {item.room_label}
@@ -113,7 +130,8 @@ export function IssueTrackerScreen() {
                   {item.revisit_date && <Text style={styles.repairText}>재방문: {item.revisit_date}</Text>}
                 </View>
               )}
-            </View>
+              <Text style={styles.openHint}>점검 이어서 열기 ›</Text>
+            </TouchableOpacity>
           );
         }}
       />
@@ -157,4 +175,5 @@ const styles = StyleSheet.create({
     gap: moderateScale(2),
   },
   repairText: { fontSize: font.xs, color: colors.textPrimary },
+  openHint: { fontSize: font.xs, color: colors.primary, fontWeight: "600", marginTop: spacing.sm, textAlign: "right" },
 });
