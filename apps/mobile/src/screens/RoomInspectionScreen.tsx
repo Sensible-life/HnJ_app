@@ -290,8 +290,15 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
     persistOperationsInfo({ lostItemLocation: text });
   }
 
-  async function handleSaveDraft() {
-    Alert.alert("임시 저장됨", "점검 내용이 기기에 저장되었습니다. 네트워크 연결 시 자동 동기화됩니다.");
+  // FR-IA: 점검 항목은 조작하는 즉시 로컬 SQLite에 저장되므로, "임시 저장"은 사실상
+  // "저장하고 체크인 화면으로 나가기"다. 예전에는 알림만 띄우고 화면에 그대로 남아있어
+  // 체크인으로 돌아갈 방법이 없었다 — 확인을 누르면 실제로 체크인 화면으로 돌아가도록 수정.
+  function handleSaveDraft() {
+    Alert.alert(
+      "임시 저장됨",
+      "점검 내용이 기기에 저장되었습니다. 나중에 홈 화면의 '오늘 객실'에서 이어서 진행할 수 있어요.",
+      [{ text: "확인", onPress: onDone }],
+    );
   }
 
   async function handleComplete() {
@@ -338,6 +345,9 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
           { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(17) },
         ]}
       >
+        <TouchableOpacity onPress={handleSaveDraft}>
+          <Text style={styles.back}>{"< 임시 저장하고 체크인으로 돌아가기"}</Text>
+        </TouchableOpacity>
         <Text style={styles.header}>{roomLabel} 점검 진행 중</Text>
         <Text style={styles.subheader}>
           {completedCount}/{items.length} · {progress}% 완료
@@ -643,4 +653,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   completeButtonText: { fontWeight: "700", color: "#FFFFFF" },
+  back: { color: colors.primary, fontSize: font.base, marginBottom: spacing.md },
 });
