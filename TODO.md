@@ -49,9 +49,10 @@
 - [ ] 위 흐름을 실제 DB(Prisma)와 연결 — 현재는 인메모리 저장소(`TicketsStore`)로 임시 구현, Prisma Client 생성이 되는 환경에서 리포지토리로 교체 필요
 
 ## Phase 5 — BATH PRO 연동 + 이슈트래커
-- [ ] ROOM PRO '화장실' 항목 주의/긴급 선택 시 BATH PRO Bottom Sheet 연동
-- [ ] BATH PRO 12개 구역 점검 UI (작업 전/중/후 사진, 수리/비용/재방문일 입력)
-- [ ] 이슈 상태 추적(진행중/완료/미완료) 화면
+- [x] ROOM PRO '화장실' 항목(room-03) 주의/긴급 선택 시 BATH PRO Bottom Sheet 연동 (`BathProSheet`, `RoomInspectionScreen`)
+- [x] BATH PRO 12개 구역 점검 UI — 3-State 토글 + 작업 전/중/후 사진(BEFORE/GENERAL/AFTER) + 수리자재/비용/재방문일 입력 (`BathProInspectionScreen`)
+  - BATH PRO 세션은 ROOM PRO 세션의 자식 세션으로 로컬 저장 (`sessions.parent_session_id`), 완료 시 동일하게 `/inspections/sync`로 동기화
+- [x] 이슈 상태 추적(진행중/완료/미완료) 화면 (`IssueTrackerScreen`, 모바일 "이슈" 탭) — 현재는 로컬 SQLite의 주의/긴급 항목을 기준으로 상태를 근사 표시, 실제 DB 연동 후 IssueTicket.status 기준으로 교체 필요
 
 ## Phase 6 — 관리자 웹 고도화
 - [ ] 일정 관리 (호텔별 정기 방문 주기 자동 생성, 담당자 배정, 미방문 알림)

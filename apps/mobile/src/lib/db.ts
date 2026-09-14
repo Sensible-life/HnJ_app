@@ -9,6 +9,7 @@ function getDb() {
         PRAGMA journal_mode = WAL;
         CREATE TABLE IF NOT EXISTS sessions (
           id TEXT PRIMARY KEY NOT NULL,
+          parent_session_id TEXT,
           hotel_name TEXT NOT NULL DEFAULT '',
           room_label TEXT NOT NULL,
           type TEXT NOT NULL,
@@ -27,7 +28,10 @@ function getDb() {
           item_name TEXT NOT NULL,
           state TEXT NOT NULL DEFAULT 'UNSET',
           comment TEXT,
-          photo_count INTEGER NOT NULL DEFAULT 0
+          photo_count INTEGER NOT NULL DEFAULT 0,
+          repair_material TEXT,
+          repair_cost INTEGER,
+          revisit_date TEXT
         );
         CREATE TABLE IF NOT EXISTS media (
           id TEXT PRIMARY KEY NOT NULL,
@@ -50,6 +54,7 @@ function getDb() {
 
 export interface LocalSession {
   id: string;
+  parent_session_id: string | null;
   hotel_name: string;
   room_label: string;
   type: "ROOM_PRO" | "BATH_PRO";
@@ -70,6 +75,9 @@ export interface LocalItem {
   state: "UNSET" | "NORMAL" | "CAUTION" | "URGENT";
   comment: string | null;
   photo_count: number;
+  repair_material: string | null;
+  repair_cost: number | null;
+  revisit_date: string | null;
 }
 
 export interface LocalMedia {
@@ -88,10 +96,11 @@ export interface LocalMedia {
 export async function createSession(session: Omit<LocalSession, "synced">) {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO sessions (id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
       session.id,
+      session.parent_session_id,
       session.hotel_name,
       session.room_label,
       session.type,
@@ -109,9 +118,20 @@ export async function insertItems(items: LocalItem[]) {
   const db = await getDb();
   for (const item of items) {
     await db.runAsync(
-      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [item.id, item.session_id, item.item_def_id, item.item_name, item.state, item.comment, item.photo_count],
+      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, repair_material, repair_cost, revisit_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        item.id,
+        item.session_id,
+        item.item_def_id,
+        item.item_name,
+        item.state,
+        item.comment,
+        item.photo_count,
+        item.repair_material,
+        item.repair_cost,
+        item.revisit_date,
+      ],
     );
   }
 }
@@ -136,6 +156,36 @@ export async function updateItemState(
 export async function getItemsForSession(sessionId: string): Promise<LocalItem[]> {
   const db = await getDb();
   return db.getAllAsync<LocalItem>(`SELECT * FROM inspection_items WHERE session_id = ?`, [sessionId]);
+}
+
+export async function updateItemRepairInfo(
+  itemId: string,
+  info: { repairMaterial: string | null; repairCost: number | null; revisitDate: string | null },
+) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE inspection_items SET repair_material = ?, repair_cost = ?, revisit_date = ? WHERE id = ?`,
+    [info.repairMaterial, info.repairCost, info.revisitDate, itemId],
+  );
+}
+
+// FR-이슈트래커: 주의/긴급 항목을 세션 정보와 함께 조회 (진행중/완료/미완료 상태 추적용)
+export interface IssueItemRow extends LocalItem {
+  hotel_name: string;
+  room_label: string;
+  session_type: "ROOM_PRO" | "BATH_PRO";
+  started_at: string;
+}
+
+export async function getIssueItems(): Promise<IssueItemRow[]> {
+  const db = await getDb();
+  return db.getAllAsync<IssueItemRow>(
+    `SELECT i.*, s.hotel_name as hotel_name, s.room_label as room_label, s.type as session_type, s.started_at as started_at
+     FROM inspection_items i
+     JOIN sessions s ON s.id = i.session_id
+     WHERE i.state IN ('CAUTION', 'URGENT')
+     ORDER BY s.started_at DESC`,
+  );
 }
 
 export async function completeSession(sessionId: string, completedAt: string) {

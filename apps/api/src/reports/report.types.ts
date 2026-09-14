@@ -3,6 +3,9 @@ export interface ReportItemInput {
   state: 'UNSET' | 'NORMAL' | 'CAUTION' | 'URGENT';
   comment?: string | null;
   photo_count?: number;
+  repair_material?: string | null;
+  repair_cost?: number | null;
+  revisit_date?: string | null;
 }
 
 export interface ReportSessionInput {

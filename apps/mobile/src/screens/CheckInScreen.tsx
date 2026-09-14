@@ -50,6 +50,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
       const now = new Date().toISOString();
       await createSession({
         id: sessionId,
+        parent_session_id: null,
         hotel_name: HOTEL_NAME,
         room_label: roomLabel,
         type: "ROOM_PRO",
@@ -69,6 +70,9 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
           state: "UNSET",
           comment: null,
           photo_count: 0,
+          repair_material: null,
+          repair_cost: null,
+          revisit_date: null,
         })),
       );
 

@@ -5,7 +5,10 @@ import { colors, radius, spacing, shadow, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getItemsForSession, updateItemState, completeSession, insertMedia, LocalItem } from "../lib/db";
+import { getItemsForSession, updateItemState, completeSession, insertMedia, createSession, insertItems, LocalItem } from "../lib/db";
+import { BathProSheet } from "../components/BathProSheet";
+import { BathProInspectionScreen } from "./BathProInspectionScreen";
+import { BATH_PRO_ITEMS } from "../data/inspectionItems";
 import { syncPendingSessions } from "../lib/sync";
 import { uploadPendingMedia } from "../lib/mediaSync";
 
@@ -21,6 +24,8 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
   const [items, setItems] = useState<LocalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [bathSheetVisible, setBathSheetVisible] = useState(false);
+  const [bathSession, setBathSession] = useState<{ id: string } | null>(null);
 
   const load = useCallback(async () => {
     const rows = await getItemsForSession(sessionId);
@@ -64,6 +69,45 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
       await updateItemState(item.id, state);
     }
     await load();
+
+    // FR-INSP-04: '화장실' 항목(room-03)이 주의/긴급으로 표시되면 BATH PRO 진입 시트를 띄운다.
+    if (item.item_def_id === "room-03" && (state === "CAUTION" || state === "URGENT")) {
+      setBathSheetVisible(true);
+    }
+  }
+
+  async function handleOpenBathPro() {
+    const bathSessionId = `sess_${Date.now()}_bath`;
+    const now = new Date().toISOString();
+    await createSession({
+      id: bathSessionId,
+      parent_session_id: sessionId,
+      hotel_name: hotelName,
+      room_label: roomLabel,
+      type: "BATH_PRO",
+      status: "IN_PROGRESS",
+      checkin_method: "MANUAL",
+      gps_lat: null,
+      gps_lng: null,
+      started_at: now,
+      completed_at: null,
+    });
+    await insertItems(
+      BATH_PRO_ITEMS.map((def) => ({
+        id: `${bathSessionId}_${def.id}`,
+        session_id: bathSessionId,
+        item_def_id: def.id,
+        item_name: def.name,
+        state: "UNSET",
+        comment: null,
+        photo_count: 0,
+        repair_material: null,
+        repair_cost: null,
+        revisit_date: null,
+      })),
+    );
+    setBathSheetVisible(false);
+    setBathSession({ id: bathSessionId });
   }
 
   async function handleSaveDraft() {
@@ -88,6 +132,17 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
     } finally {
       setSaving(false);
     }
+  }
+
+  if (bathSession) {
+    return (
+      <BathProInspectionScreen
+        sessionId={bathSession.id}
+        roomLabel={roomLabel}
+        hotelName={hotelName}
+        onDone={() => setBathSession(null)}
+      />
+    );
   }
 
   if (loading) return <View style={styles.screen} />;
@@ -134,6 +189,13 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
           <Text style={styles.completeButtonText}>{saving ? "처리 중..." : "리포트 생성 및 완료"}</Text>
         </TouchableOpacity>
       </View>
+
+      <BathProSheet
+        visible={bathSheetVisible}
+        roomLabel={roomLabel}
+        onExecute={handleOpenBathPro}
+        onClose={() => setBathSheetVisible(false)}
+      />
     </View>
   );
 }

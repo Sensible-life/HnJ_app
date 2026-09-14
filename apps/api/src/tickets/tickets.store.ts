@@ -5,6 +5,9 @@ export interface TicketRecord {
   hotelName: string;
   roomLabel: string;
   itemName: string;
+  repairMaterial?: string | null;
+  repairCost?: number | null;
+  revisitDate?: string | null;
   status: 'PENDING' | 'APPROVED' | 'REINSPECT_REQUESTED';
   createdAt: string;
   resolvedAt?: string;

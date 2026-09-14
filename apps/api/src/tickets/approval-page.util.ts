@@ -42,6 +42,15 @@ export function renderApprovalPage(ticket: TicketRecord): string {
       <div style="font-size:12px;color:#8A8F98;margin-top:4px;">
         접수: ${new Date(ticket.createdAt).toLocaleString('ko-KR')}
       </div>
+      ${
+        ticket.repairMaterial || ticket.repairCost || ticket.revisitDate
+          ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F5F6F8;font-size:12px;color:#111827;">
+              ${ticket.repairMaterial ? `<div>수리 자재: ${ticket.repairMaterial}</div>` : ''}
+              ${ticket.repairCost ? `<div>예상 비용: ${ticket.repairCost.toLocaleString('ko-KR')}원</div>` : ''}
+              ${ticket.revisitDate ? `<div>재방문일: ${ticket.revisitDate}</div>` : ''}
+            </div>`
+          : ''
+      }
     </div>
 
     <form method="post" action="./${ticket.token}/approve" style="margin-top:20px;">

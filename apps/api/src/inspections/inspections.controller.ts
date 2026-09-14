@@ -38,6 +38,9 @@ export class InspectionsController {
         hotelName: session.hotel_name,
         roomLabel: session.room_label,
         itemName: item.item_name,
+        repairMaterial: item.repair_material ?? null,
+        repairCost: item.repair_cost ?? null,
+        revisitDate: item.revisit_date ?? null,
       });
       const actionUrl = `${baseUrl}/approve/${token}`;
       await this.notifications.sendAlimtalk({
