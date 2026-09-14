@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { createSession, insertItems, ServiceType } from "../lib/db";
 import { ROOM_PRO_ITEMS } from "../data/inspectionItems";
@@ -39,10 +39,9 @@ type Props = {
     roomLabel: string,
     hotelName: string,
   ) => void;
-  onCancel: () => void;
 };
 
-export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
+export function CheckInScreen({ onCheckedIn }: Props) {
   const insets = useSafeAreaInsets();
   const [permission, requestPermission] = useCameraPermissions();
   const [scanMode, setScanMode] = useState(false);
@@ -202,9 +201,6 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         },
       ]}
     >
-      <TouchableOpacity onPress={onCancel}>
-        <Text style={styles.back}>{"< 뒤로"}</Text>
-      </TouchableOpacity>
       <Text style={styles.header}>퀵 체크인</Text>
       <Text style={styles.subheader}>
         QR 스캔, NFC 태깅 또는 직접 선택으로 체크인하세요
@@ -329,11 +325,6 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   center: { alignItems: "center", justifyContent: "center" },
   content: { paddingHorizontal: spacing.lg },
-  back: {
-    color: colors.primary,
-    fontSize: font.base,
-    marginBottom: spacing.md,
-  },
   header: {
     fontSize: font.display,
     fontWeight: "700",
@@ -352,8 +343,9 @@ const styles = StyleSheet.create({
     paddingVertical: moderateScale(14),
     borderRadius: radius.card,
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: "center",
-    ...shadow.card,
   },
   quickPrimary: { backgroundColor: colors.primary },
   quickText: { fontWeight: "700", color: colors.textPrimary },

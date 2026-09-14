@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -345,9 +345,16 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
           { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(17) },
         ]}
       >
-        <TouchableOpacity onPress={handleSaveDraft}>
-          <Text style={styles.back}>{"< 임시 저장하고 체크인으로 돌아가기"}</Text>
-        </TouchableOpacity>
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={handleSaveDraft}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={styles.backButtonIcon}>{"\u2190"}</Text>
+          </TouchableOpacity>
+          <Text style={styles.topBarLabel}>임시 저장하고 체크인으로</Text>
+        </View>
         <Text style={styles.header}>{roomLabel} 점검 진행 중</Text>
         <Text style={styles.subheader}>
           {completedCount}/{items.length} · {progress}% 완료
@@ -572,10 +579,11 @@ const styles = StyleSheet.create({
   progressFill: { height: "100%", backgroundColor: colors.primary },
   itemCard: {
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.card,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadow.card,
   },
   itemTitle: { fontSize: font.base, fontWeight: "600", color: colors.textPrimary },
   photoHint: { marginTop: spacing.sm, fontSize: font.xs, color: colors.statusUrgent },
@@ -653,5 +661,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   completeButtonText: { fontWeight: "700", color: "#FFFFFF" },
-  back: { color: colors.primary, fontSize: font.base, marginBottom: spacing.md },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  backButton: {
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backButtonIcon: { fontSize: font.lg, fontWeight: "700", color: colors.primary },
+  topBarLabel: { fontSize: font.sm, fontWeight: "600", color: colors.textSecondary },
 });

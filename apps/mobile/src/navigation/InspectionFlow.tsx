@@ -51,7 +51,6 @@ export function InspectionFlow() {
   return (
     <CheckInScreen
       onCheckedIn={(id, roomLabel, hotelName) => setSession({ id, roomLabel, hotelName, type: "ROOM_PRO" })}
-      onCancel={() => setSession(null)}
     />
   );
 }

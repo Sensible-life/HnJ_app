@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from "react-native";
-import { colors, radius, shadow, spacing, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
 
 type Props = {
@@ -26,9 +26,10 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.card,
     padding: spacing.md,
-    ...shadow.card,
   },
   iconWrap: {
     width: ICON_SIZE,

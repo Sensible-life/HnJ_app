@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
 
 export function LoginScreen({ onLogin }: { onLogin: () => void }) {
@@ -52,9 +52,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, justifyContent: "center", padding: spacing.lg },
   card: {
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.card,
     padding: spacing.lg,
-    ...shadow.card,
   },
   title: { fontSize: font.xxl, fontWeight: "700", color: colors.textPrimary },
   subtitle: { fontSize: font.base, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.lg },

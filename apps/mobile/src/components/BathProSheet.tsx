@@ -1,6 +1,6 @@
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
 
 // FR-INSP-04: ROOM PRO 점검 중 '화장실' 항목에서 [주의]/[긴급] 선택 시
@@ -19,7 +19,7 @@ export function BathProSheet({ visible, roomLabel, onExecute, onClose }: Props) 
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <TouchableOpacity style={styles.backdropTouchable} activeOpacity={1} onPress={onClose} />
-        <View style={[styles.sheet, shadow.card, { paddingBottom: insets.bottom + spacing.lg }]}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.lg }]}>
           <View style={styles.grabber} />
           <Text style={styles.icon}>🛁</Text>
           <Text style={styles.title}>BATH PRO 정밀 점검 실행</Text>
@@ -46,6 +46,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderTopLeftRadius: radius.card,
     borderTopRightRadius: radius.card,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.border,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     alignItems: "center",

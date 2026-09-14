@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
 import {
@@ -412,10 +412,11 @@ const styles = StyleSheet.create({
   progressFill: { height: "100%", backgroundColor: colors.primary },
   itemCard: {
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.card,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadow.card,
   },
   itemTitle: { fontSize: font.base, fontWeight: "600", color: colors.textPrimary },
   repairBlock: {

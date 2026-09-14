@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, radius, spacing, shadow, font } from "../theme/tokens";
+import { colors, radius, spacing, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
 import { getIssueItems, IssueItemRow } from "../lib/db";
 
@@ -148,10 +148,11 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textSecondary, fontSize: font.sm },
   card: {
     backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.card,
     padding: spacing.md,
     marginBottom: spacing.md,
-    ...shadow.card,
   },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   roomLabel: { fontSize: font.xs, color: colors.textSecondary, fontWeight: "600" },
