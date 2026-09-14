@@ -5,12 +5,25 @@ import { api, API_BASE_URL, StoredInspection, MediaRecord } from "../../../lib/a
 import { BeforeAfterSlider } from "./components/BeforeAfterSlider";
 import { QuickDrawCanvas } from "./components/QuickDrawCanvas";
 
-const STATE_LABEL: Record<string, string> = { NORMAL: "정상", CAUTION: "주의", URGENT: "긴급", UNSET: "미점검" };
+const STATE_LABEL: Record<string, string> = {
+  NORMAL: "정상",
+  CAUTION: "주의",
+  URGENT: "긴급",
+  UNSET: "미점검",
+  NOT_APPLICABLE: "해당없음",
+};
 const STATE_TONE: Record<string, string> = {
   NORMAL: "bg-status-success-bg text-status-success",
   CAUTION: "bg-primary-soft text-primary",
   URGENT: "bg-status-urgent-bg text-status-urgent",
   UNSET: "bg-background-subtle text-foreground-secondary",
+  NOT_APPLICABLE: "bg-background-subtle text-foreground-secondary",
+};
+const SERVICE_TYPE_LABEL: Record<string, string> = {
+  INITIAL_RENEWAL: "최초 리뉴얼",
+  REGULAR: "정기점검",
+  EMERGENCY: "긴급출동",
+  REINSPECTION: "재점검",
 };
 
 function mediaUrl(m: MediaRecord) {
@@ -164,6 +177,11 @@ export default function RoomsPage() {
                       <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-[11px] font-semibold text-primary">
                         {t.session.type === "BATH_PRO" ? "🛁 BATH PRO" : "🛏 ROOM PRO"}
                       </span>
+                      {t.session.service_type && (
+                        <span className="rounded-full bg-background-subtle px-2.5 py-0.5 text-[11px] font-medium text-foreground-secondary">
+                          {SERVICE_TYPE_LABEL[t.session.service_type] ?? t.session.service_type}
+                        </span>
+                      )}
                       <span className="text-xs text-foreground-secondary">
                         {(t.session.completed_at ?? t.syncedAt).replace("T", " ").slice(0, 16)}
                       </span>
@@ -181,16 +199,29 @@ export default function RoomsPage() {
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {t.items
                         .filter((i) => i.state !== "UNSET")
-                        .map((i) => (
-                          <span
-                            key={i.item_name}
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATE_TONE[i.state]}`}
-                            title={i.item_name}
-                          >
-                            {i.item_name.length > 8 ? `${i.item_name.slice(0, 8)}…` : i.item_name} · {STATE_LABEL[i.state]}
-                          </span>
-                        ))}
+                        .map((i) => {
+                          const tooltipParts = [i.item_name];
+                          if (i.problem_description) tooltipParts.push(`문제: ${i.problem_description}`);
+                          if (i.action_description) tooltipParts.push(`조치: ${i.action_description}`);
+                          if (i.requires_hotel_approval) tooltipParts.push("호텔 승인 필요");
+                          return (
+                            <span
+                              key={i.item_name}
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATE_TONE[i.state]}`}
+                              title={tooltipParts.join(" / ")}
+                            >
+                              {i.item_name.length > 8 ? `${i.item_name.slice(0, 8)}…` : i.item_name} ·{" "}
+                              {STATE_LABEL[i.state]}
+                              {i.requires_hotel_approval ? " ●" : ""}
+                            </span>
+                          );
+                        })}
                     </div>
+                    {t.session.inspector_opinion && (
+                      <p className="mt-2 rounded-lg bg-background-subtle px-3 py-2 text-xs text-foreground-secondary">
+                        담당자 의견: {t.session.inspector_opinion}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

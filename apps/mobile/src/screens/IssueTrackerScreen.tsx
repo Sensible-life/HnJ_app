@@ -83,10 +83,26 @@ export function IssueTrackerScreen() {
                   <Text style={[styles.statusBadgeText, { color: color.fg }]}>{status}</Text>
                 </View>
               </View>
-              <Text style={styles.itemName}>{item.item_name}</Text>
+              <View style={styles.itemNameRow}>
+                <Text style={styles.itemName}>{item.item_name}</Text>
+                {item.requires_hotel_approval === 1 && (
+                  <View style={styles.approvalBadge}>
+                    <Text style={styles.approvalBadgeText}>호텔 승인 필요</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.stateHint}>
-                {item.state === "URGENT" ? "🚨 긴급" : "⚠️ 주의"} · 사진 {item.photo_count}장
+                {item.state === "URGENT" ? "🚨 긴급" : item.state === "CAUTION" ? "⚠️ 주의" : item.state} · 사진{" "}
+                {item.photo_count}장
               </Text>
+              {(item.problem_description || item.action_description) && (
+                <View style={styles.repairRow}>
+                  {item.problem_description && (
+                    <Text style={styles.repairText}>문제: {item.problem_description}</Text>
+                  )}
+                  {item.action_description && <Text style={styles.repairText}>조치: {item.action_description}</Text>}
+                </View>
+              )}
               {(item.repair_material || item.repair_cost || item.revisit_date) && (
                 <View style={styles.repairRow}>
                   {item.repair_material && <Text style={styles.repairText}>자재: {item.repair_material}</Text>}
@@ -122,7 +138,15 @@ const styles = StyleSheet.create({
   roomLabel: { fontSize: font.xs, color: colors.textSecondary, fontWeight: "600" },
   statusBadge: { borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: moderateScale(3) },
   statusBadgeText: { fontSize: font.xs, fontWeight: "700" },
-  itemName: { fontSize: font.base, fontWeight: "700", color: colors.textPrimary, marginTop: moderateScale(6) },
+  itemNameRow: { flexDirection: "row", alignItems: "center", gap: moderateScale(6), marginTop: moderateScale(6) },
+  itemName: { fontSize: font.base, fontWeight: "700", color: colors.textPrimary },
+  approvalBadge: {
+    backgroundColor: colors.statusUrgentBg,
+    borderRadius: radius.pill,
+    paddingHorizontal: moderateScale(8),
+    paddingVertical: moderateScale(2),
+  },
+  approvalBadgeText: { fontSize: font.xs, fontWeight: "700", color: colors.statusUrgent },
   stateHint: { fontSize: font.xs, color: colors.textSecondary, marginTop: moderateScale(4) },
   repairRow: {
     marginTop: spacing.sm,

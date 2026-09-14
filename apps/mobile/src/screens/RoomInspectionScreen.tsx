@@ -1,11 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, TextInput, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
 import { ThreeStateToggle, ItemState } from "../components/ThreeStateToggle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getItemsForSession, updateItemState, completeSession, insertMedia, createSession, insertItems, LocalItem } from "../lib/db";
+import {
+  getItemsForSession,
+  updateItemState,
+  updateItemProblemInfo,
+  updateSessionOpinion,
+  completeSession,
+  insertMedia,
+  createSession,
+  insertItems,
+  getSession,
+  LocalItem,
+  LocalSession,
+} from "../lib/db";
 import { BathProSheet } from "../components/BathProSheet";
 import { BathProInspectionScreen } from "./BathProInspectionScreen";
 import { BATH_PRO_ITEMS } from "../data/inspectionItems";
@@ -22,14 +34,20 @@ type Props = {
 export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }: Props) {
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<LocalItem[]>([]);
+  const [session, setSession] = useState<LocalSession | null>(null);
+  const [opinion, setOpinion] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bathSheetVisible, setBathSheetVisible] = useState(false);
   const [bathSession, setBathSession] = useState<{ id: string } | null>(null);
 
   const load = useCallback(async () => {
-    const rows = await getItemsForSession(sessionId);
+    const [rows, sessionRow] = await Promise.all([getItemsForSession(sessionId), getSession(sessionId)]);
     setItems(rows);
+    if (sessionRow) {
+      setSession(sessionRow);
+      setOpinion((prev) => prev || sessionRow.inspector_opinion || "");
+    }
     setLoading(false);
   }, [sessionId]);
 
@@ -91,6 +109,9 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
       gps_lng: null,
       started_at: now,
       completed_at: null,
+      inspector_name: session?.inspector_name ?? null,
+      service_type: session?.service_type ?? null,
+      inspector_opinion: null,
     });
     await insertItems(
       BATH_PRO_ITEMS.map((def) => ({
@@ -104,10 +125,44 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
         repair_material: null,
         repair_cost: null,
         revisit_date: null,
+        problem_description: null,
+        action_description: null,
+        requires_hotel_approval: 0,
       })),
     );
     setBathSheetVisible(false);
     setBathSession({ id: bathSessionId });
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 A — 문제 내용/조치 내용/호텔 승인 필요 여부
+  async function handleProblemInfoChange(
+    item: LocalItem,
+    patch: Partial<{ problem_description: string | null; action_description: string | null; requires_hotel_approval: number }>,
+  ) {
+    const next = {
+      problemDescription: patch.problem_description !== undefined ? patch.problem_description : item.problem_description,
+      actionDescription: patch.action_description !== undefined ? patch.action_description : item.action_description,
+      requiresHotelApproval:
+        patch.requires_hotel_approval !== undefined ? patch.requires_hotel_approval === 1 : item.requires_hotel_approval === 1,
+    };
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === item.id
+          ? {
+              ...it,
+              problem_description: next.problemDescription,
+              action_description: next.actionDescription,
+              requires_hotel_approval: next.requiresHotelApproval ? 1 : 0,
+            }
+          : it,
+      ),
+    );
+    await updateItemProblemInfo(item.id, next);
+  }
+
+  function handleOpinionChange(text: string) {
+    setOpinion(text);
+    updateSessionOpinion(sessionId, text || null);
   }
 
   async function handleSaveDraft() {
@@ -121,6 +176,7 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
     }
     setSaving(true);
     try {
+      await updateSessionOpinion(sessionId, opinion || null);
       await completeSession(sessionId, new Date().toISOString());
       const [result] = await Promise.all([syncPendingSessions(), uploadPendingMedia()]);
       if (result.synced > 0) {
@@ -165,20 +221,75 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
           <View style={[styles.progressFill, { width: `${progress}%` }]} />
         </View>
 
-        {items.map((item, idx) => (
-          <View key={item.id} style={styles.itemCard}>
-            <Text style={styles.itemTitle}>
-              {idx + 1}. {item.item_name}
-            </Text>
-            <ThreeStateToggle
-              value={item.state}
-              onChange={(state) => handleStateChange(item, state)}
-            />
-            {item.state === "URGENT" && (
-              <Text style={styles.photoHint}>📷 사진 {item.photo_count}장 등록됨</Text>
-            )}
-          </View>
-        ))}
+        {items.map((item, idx) => {
+          const needsProblemInfo = item.state === "CAUTION" || item.state === "URGENT";
+          return (
+            <View key={item.id} style={styles.itemCard}>
+              <Text style={styles.itemTitle}>
+                {idx + 1}. {item.item_name}
+              </Text>
+              <ThreeStateToggle
+                value={item.state}
+                onChange={(state) => handleStateChange(item, state)}
+              />
+              {item.state === "URGENT" && (
+                <Text style={styles.photoHint}>📷 사진 {item.photo_count}장 등록됨</Text>
+              )}
+
+              {needsProblemInfo && (
+                <View style={styles.problemBlock}>
+                  <Text style={styles.problemLabel}>문제 내용</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 벽지 오염 발견"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.problem_description ?? ""}
+                    onChangeText={(v) => handleProblemInfoChange(item, { problem_description: v || null })}
+                  />
+
+                  <Text style={styles.problemLabel}>조치 내용</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 도배 재시공 예정"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.action_description ?? ""}
+                    onChangeText={(v) => handleProblemInfoChange(item, { action_description: v || null })}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.approvalToggle, item.requires_hotel_approval === 1 && styles.approvalToggleActive]}
+                    onPress={() =>
+                      handleProblemInfoChange(item, {
+                        requires_hotel_approval: item.requires_hotel_approval === 1 ? 0 : 1,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.approvalToggleText,
+                        item.requires_hotel_approval === 1 && styles.approvalToggleTextActive,
+                      ]}
+                    >
+                      {item.requires_hotel_approval === 1 ? "✓ 호텔 승인 필요" : "호텔 승인 필요로 표시"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        <View style={styles.opinionBlock}>
+          <Text style={styles.problemLabel}>담당자 의견 (선택)</Text>
+          <TextInput
+            style={[styles.input, styles.opinionInput]}
+            placeholder="점검 총평이나 특이사항을 입력하세요"
+            placeholderTextColor={colors.textSecondary}
+            value={opinion}
+            onChangeText={handleOpinionChange}
+            multiline
+          />
+        </View>
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
@@ -222,6 +333,41 @@ const styles = StyleSheet.create({
   },
   itemTitle: { fontSize: font.base, fontWeight: "600", color: colors.textPrimary },
   photoHint: { marginTop: spacing.sm, fontSize: font.xs, color: colors.statusUrgent },
+  problemBlock: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.backgroundSubtle,
+  },
+  problemLabel: {
+    fontSize: font.xs,
+    fontWeight: "600",
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
+    marginBottom: moderateScale(4),
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.backgroundSubtle,
+    backgroundColor: colors.backgroundSubtle,
+    borderRadius: radius.input,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === "ios" ? moderateScale(10) : moderateScale(6),
+    fontSize: font.sm,
+    color: colors.textPrimary,
+  },
+  approvalToggle: {
+    marginTop: spacing.sm,
+    paddingVertical: moderateScale(10),
+    borderRadius: radius.input,
+    backgroundColor: colors.backgroundSubtle,
+    alignItems: "center",
+  },
+  approvalToggleActive: { backgroundColor: colors.statusUrgentBg },
+  approvalToggleText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
+  approvalToggleTextActive: { color: colors.statusUrgent },
+  opinionBlock: { marginBottom: spacing.md },
+  opinionInput: { minHeight: moderateScale(80), textAlignVertical: "top" },
   bottomBar: {
     position: "absolute",
     left: 0,

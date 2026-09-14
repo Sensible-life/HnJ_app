@@ -19,7 +19,10 @@ function getDb() {
           gps_lng REAL,
           started_at TEXT NOT NULL,
           completed_at TEXT,
-          synced INTEGER NOT NULL DEFAULT 0
+          synced INTEGER NOT NULL DEFAULT 0,
+          inspector_name TEXT,
+          service_type TEXT,
+          inspector_opinion TEXT
         );
         CREATE TABLE IF NOT EXISTS inspection_items (
           id TEXT PRIMARY KEY NOT NULL,
@@ -31,7 +34,10 @@ function getDb() {
           photo_count INTEGER NOT NULL DEFAULT 0,
           repair_material TEXT,
           repair_cost INTEGER,
-          revisit_date TEXT
+          revisit_date TEXT,
+          problem_description TEXT,
+          action_description TEXT,
+          requires_hotel_approval INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS media (
           id TEXT PRIMARY KEY NOT NULL,
@@ -52,6 +58,9 @@ function getDb() {
   return dbPromise;
 }
 
+// FR: docs/FEATURE_SCOPE.md 우선순위 A — 서비스 구분(최초 리뉴얼/정기점검/긴급출동/재점검)
+export type ServiceType = "INITIAL_RENEWAL" | "REGULAR" | "EMERGENCY" | "REINSPECTION";
+
 export interface LocalSession {
   id: string;
   parent_session_id: string | null;
@@ -65,6 +74,9 @@ export interface LocalSession {
   started_at: string;
   completed_at: string | null;
   synced: number;
+  inspector_name: string | null;
+  service_type: ServiceType | null;
+  inspector_opinion: string | null;
 }
 
 export interface LocalItem {
@@ -72,12 +84,15 @@ export interface LocalItem {
   session_id: string;
   item_def_id: string;
   item_name: string;
-  state: "UNSET" | "NORMAL" | "CAUTION" | "URGENT";
+  state: "UNSET" | "NORMAL" | "CAUTION" | "URGENT" | "NOT_APPLICABLE";
   comment: string | null;
   photo_count: number;
   repair_material: string | null;
   repair_cost: number | null;
   revisit_date: string | null;
+  problem_description: string | null;
+  action_description: string | null;
+  requires_hotel_approval: number;
 }
 
 export interface LocalMedia {
@@ -96,8 +111,8 @@ export interface LocalMedia {
 export async function createSession(session: Omit<LocalSession, "synced">) {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+    `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced, inspector_name, service_type, inspector_opinion)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
     [
       session.id,
       session.parent_session_id,
@@ -110,6 +125,9 @@ export async function createSession(session: Omit<LocalSession, "synced">) {
       session.gps_lng,
       session.started_at,
       session.completed_at,
+      session.inspector_name,
+      session.service_type,
+      session.inspector_opinion,
     ],
   );
 }
@@ -118,8 +136,8 @@ export async function insertItems(items: LocalItem[]) {
   const db = await getDb();
   for (const item of items) {
     await db.runAsync(
-      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, repair_material, repair_cost, revisit_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, repair_material, repair_cost, revisit_date, problem_description, action_description, requires_hotel_approval)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         item.id,
         item.session_id,
@@ -131,6 +149,9 @@ export async function insertItems(items: LocalItem[]) {
         item.repair_material,
         item.repair_cost,
         item.revisit_date,
+        item.problem_description,
+        item.action_description,
+        item.requires_hotel_approval ?? 0,
       ],
     );
   }
@@ -158,6 +179,12 @@ export async function getItemsForSession(sessionId: string): Promise<LocalItem[]
   return db.getAllAsync<LocalItem>(`SELECT * FROM inspection_items WHERE session_id = ?`, [sessionId]);
 }
 
+export async function getSession(sessionId: string): Promise<LocalSession | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<LocalSession>(`SELECT * FROM sessions WHERE id = ?`, [sessionId]);
+  return row ?? null;
+}
+
 export async function updateItemRepairInfo(
   itemId: string,
   info: { repairMaterial: string | null; repairCost: number | null; revisitDate: string | null },
@@ -167,6 +194,28 @@ export async function updateItemRepairInfo(
     `UPDATE inspection_items SET repair_material = ?, repair_cost = ?, revisit_date = ? WHERE id = ?`,
     [info.repairMaterial, info.repairCost, info.revisitDate, itemId],
   );
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 A — 문제 내용/조치 내용/호텔 승인 필요 여부
+export async function updateItemProblemInfo(
+  itemId: string,
+  info: {
+    problemDescription: string | null;
+    actionDescription: string | null;
+    requiresHotelApproval: boolean;
+  },
+) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE inspection_items SET problem_description = ?, action_description = ?, requires_hotel_approval = ? WHERE id = ?`,
+    [info.problemDescription, info.actionDescription, info.requiresHotelApproval ? 1 : 0, itemId],
+  );
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 A — 세션 완료 전 담당자 의견 입력
+export async function updateSessionOpinion(sessionId: string, opinion: string | null) {
+  const db = await getDb();
+  await db.runAsync(`UPDATE sessions SET inspector_opinion = ? WHERE id = ?`, [opinion, sessionId]);
 }
 
 // FR-이슈트래커: 주의/긴급 항목을 세션 정보와 함께 조회 (진행중/완료/미완료 상태 추적용)
@@ -184,6 +233,7 @@ export async function getIssueItems(): Promise<IssueItemRow[]> {
      FROM inspection_items i
      JOIN sessions s ON s.id = i.session_id
      WHERE i.state IN ('CAUTION', 'URGENT')
+        OR i.requires_hotel_approval = 1
      ORDER BY s.started_at DESC`,
   );
 }

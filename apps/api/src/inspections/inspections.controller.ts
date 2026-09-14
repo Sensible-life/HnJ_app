@@ -39,9 +39,13 @@ export class InspectionsController {
       syncedAt: new Date().toISOString(),
     });
 
-    const urgentItems = items.filter((i) => i.state === 'URGENT');
+    // FR: docs/FEATURE_SCOPE.md 우선순위 A — URGENT 항목뿐 아니라
+    // requires_hotel_approval 이 true 인 항목도 호텔 승인 티켓을 생성한다.
+    const ticketItems = items.filter(
+      (i) => i.state === 'URGENT' || Boolean(i.requires_hotel_approval),
+    );
     const tickets = [];
-    for (const item of urgentItems) {
+    for (const item of ticketItems) {
       const token = randomUUID();
       const ticket = this.ticketsStore.create({
         token,
@@ -51,6 +55,9 @@ export class InspectionsController {
         repairMaterial: item.repair_material ?? null,
         repairCost: item.repair_cost ?? null,
         revisitDate: item.revisit_date ?? null,
+        problemDescription: item.problem_description ?? null,
+        actionDescription: item.action_description ?? null,
+        requiresApproval: Boolean(item.requires_hotel_approval) || item.state === 'URGENT',
       });
       const actionUrl = `${baseUrl}/approve/${token}`;
       await this.notifications.sendAlimtalk({

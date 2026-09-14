@@ -28,6 +28,14 @@ export function renderApprovalPage(ticket: TicketRecord): string {
         <div style="font-size:13px;color:#8A8F98;margin-top:8px;">
           ${ticket.hotelName} · ${ticket.roomLabel} · ${ticket.itemName}
         </div>
+        ${
+          ticket.comment
+            ? `<div style="margin-top:16px;text-align:left;background:#F5F6F8;border-radius:14px;padding:12px 14px;font-size:13px;color:#111827;">
+                <div style="font-size:11px;font-weight:700;color:#8A8F98;margin-bottom:2px;">호텔 담당자 의견</div>
+                ${ticket.comment}
+              </div>`
+            : ''
+        }
       </div>`,
     );
   }
@@ -35,13 +43,21 @@ export function renderApprovalPage(ticket: TicketRecord): string {
   return shell(
     '조치 승인',
     `
-    <div style="font-size:13px;color:#DC2626;font-weight:600;">🚨 긴급 이슈 발생</div>
+    <div style="font-size:13px;color:#DC2626;font-weight:600;">🚨 긴급 이슈 발생${ticket.requiresApproval === false ? ' (참고용)' : ''}</div>
     <h1 style="font-size:22px;font-weight:700;margin:6px 0 16px;">${ticket.hotelName} · ${ticket.roomLabel}</h1>
     <div style="background:#FFFFFF;border-radius:20px;padding:20px;box-shadow:0 4px 16px rgba(0,0,0,0.06);">
       <div style="font-size:14px;font-weight:600;">${ticket.itemName}</div>
       <div style="font-size:12px;color:#8A8F98;margin-top:4px;">
         접수: ${new Date(ticket.createdAt).toLocaleString('ko-KR')}
       </div>
+      ${
+        ticket.problemDescription || ticket.actionDescription
+          ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F5F6F8;font-size:12px;color:#111827;">
+              ${ticket.problemDescription ? `<div>문제 내용: ${ticket.problemDescription}</div>` : ''}
+              ${ticket.actionDescription ? `<div style="margin-top:2px;">조치 내용: ${ticket.actionDescription}</div>` : ''}
+            </div>`
+          : ''
+      }
       ${
         ticket.repairMaterial || ticket.repairCost || ticket.revisitDate
           ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #F5F6F8;font-size:12px;color:#111827;">
@@ -53,16 +69,29 @@ export function renderApprovalPage(ticket: TicketRecord): string {
       }
     </div>
 
-    <form method="post" action="./${ticket.token}/approve" style="margin-top:20px;">
-      <button type="submit" style="width:100%;padding:16px;border:none;border-radius:999px;background:#111827;color:#FFFFFF;font-size:15px;font-weight:700;">
+    <form id="ticket-form" style="margin-top:16px;">
+      <label style="font-size:12px;font-weight:600;color:#8A8F98;">담당자 의견 또는 답변 (선택)</label>
+      <textarea
+        name="comment"
+        form="ticket-form"
+        rows="3"
+        placeholder="확인했습니다. 다음 방문 시 재확인 부탁드려요 등"
+        style="margin-top:6px;width:100%;box-sizing:border-box;border:1px solid #F5F6F8;background:#F5F6F8;border-radius:14px;padding:12px;font-size:14px;font-family:inherit;resize:vertical;"
+      ></textarea>
+    </form>
+
+    <div style="margin-top:14px;">
+      <button type="submit" form="ticket-form" formmethod="post" formaction="./${ticket.token}/approve"
+        style="width:100%;padding:16px;border:none;border-radius:999px;background:#111827;color:#FFFFFF;font-size:15px;font-weight:700;">
         조치 승인
       </button>
-    </form>
-    <form method="post" action="./${ticket.token}/reinspect" style="margin-top:10px;">
-      <button type="submit" style="width:100%;padding:16px;border:1px solid #F5F6F8;border-radius:999px;background:#FFFFFF;color:#111827;font-size:15px;font-weight:700;">
+    </div>
+    <div style="margin-top:10px;">
+      <button type="submit" form="ticket-form" formmethod="post" formaction="./${ticket.token}/reinspect"
+        style="width:100%;padding:16px;border:1px solid #F5F6F8;border-radius:999px;background:#FFFFFF;color:#111827;font-size:15px;font-weight:700;">
         재점검 요청
       </button>
-    </form>
+    </div>
   `,
   );
 }

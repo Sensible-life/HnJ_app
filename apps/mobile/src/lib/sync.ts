@@ -28,10 +28,15 @@ export async function syncPendingSessions(): Promise<{ synced: number; failed: n
   for (const session of pending) {
     try {
       const items = await getItemsForSession(session.id);
+      // SQLite에는 requires_hotel_approval 이 0/1 정수로 저장되므로, 서버 DTO(boolean)와 맞춰 변환해서 보낸다.
+      const payloadItems = items.map((item) => ({
+        ...item,
+        requires_hotel_approval: item.requires_hotel_approval === 1,
+      }));
       const res = await fetch(`${API_BASE_URL}/inspections/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientUuid: session.id, session, items }),
+        body: JSON.stringify({ clientUuid: session.id, session, items: payloadItems }),
       });
       if (!res.ok) throw new Error(`sync failed: ${res.status}`);
       await markSessionSynced(session.id);

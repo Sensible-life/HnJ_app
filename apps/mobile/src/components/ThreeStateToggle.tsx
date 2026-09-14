@@ -2,18 +2,20 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { colors, radius, font } from "../theme/tokens";
 import { moderateScale } from "../theme/responsive";
 
-export type ItemState = "UNSET" | "NORMAL" | "CAUTION" | "URGENT";
+export type ItemState = "UNSET" | "NORMAL" | "CAUTION" | "URGENT" | "NOT_APPLICABLE";
 
 const OPTIONS: { state: ItemState; label: string }[] = [
   { state: "NORMAL", label: "정상" },
   { state: "CAUTION", label: "주의" },
   { state: "URGENT", label: "긴급" },
+  { state: "NOT_APPLICABLE", label: "해당없음" },
 ];
 
 const ACTIVE_COLOR: Record<Exclude<ItemState, "UNSET">, string> = {
   NORMAL: colors.statusSuccess,
   CAUTION: colors.statusCaution,
   URGENT: colors.statusUrgent,
+  NOT_APPLICABLE: colors.textSecondary,
 };
 
 export function ThreeStateToggle({

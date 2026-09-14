@@ -6,6 +6,7 @@ const STATE_LABEL: Record<string, string> = {
   NORMAL: '정상',
   CAUTION: '주의',
   URGENT: '긴급',
+  NOT_APPLICABLE: '해당 없음',
 };
 
 const STATE_COLOR: Record<string, string> = {
@@ -13,6 +14,14 @@ const STATE_COLOR: Record<string, string> = {
   NORMAL: '#16A34A',
   CAUTION: '#B45309',
   URGENT: '#DC2626',
+  NOT_APPLICABLE: '#8A8F98',
+};
+
+const SERVICE_TYPE_LABEL: Record<string, string> = {
+  INITIAL_RENEWAL: '최초 리뉴얼',
+  REGULAR: '정기점검',
+  EMERGENCY: '긴급출동',
+  REINSPECTION: '재점검',
 };
 
 /**
@@ -35,8 +44,19 @@ export function generateReportPdf(
     doc.moveDown(0.3);
     doc.fontSize(20).fillColor('#111827').text(`${session.hotel_name} · ${session.room_label}`);
     doc.fontSize(10).fillColor('#8A8F98').text(
-      session.completed_at ? new Date(session.completed_at).toLocaleString('ko-KR') : '',
+      [
+        session.completed_at ? new Date(session.completed_at).toLocaleString('ko-KR') : '',
+        session.inspector_name ?? '',
+        session.service_type ? (SERVICE_TYPE_LABEL[session.service_type] ?? session.service_type) : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
     );
+    if (session.inspector_opinion) {
+      doc.moveDown(0.5);
+      doc.fontSize(10).fillColor('#2F6FED').text('담당자 의견', { continued: false });
+      doc.fontSize(10).fillColor('#111827').text(session.inspector_opinion);
+    }
     doc.moveDown(1);
 
     const urgentCount = items.filter((i) => i.state === 'URGENT').length;
@@ -53,8 +73,17 @@ export function generateReportPdf(
         .text(`${idx + 1}. ${item.item_name}`, { continued: true })
         .fillColor(color)
         .text(`   [${STATE_LABEL[item.state] ?? item.state}]`);
+      if (item.requires_hotel_approval) {
+        doc.fontSize(9).fillColor('#DC2626').text('   ● 호텔 승인 필요');
+      }
       if (item.comment) {
-        doc.fontSize(9).fillColor('#8A8F98').text(`   ${item.comment}`);
+        doc.fontSize(9).fillColor('#8A8F98').text(`   메모: ${item.comment}`);
+      }
+      if (item.problem_description) {
+        doc.fontSize(9).fillColor('#8A8F98').text(`   문제 내용: ${item.problem_description}`);
+      }
+      if (item.action_description) {
+        doc.fontSize(9).fillColor('#8A8F98').text(`   조치 내용: ${item.action_description}`);
       }
       doc.moveDown(0.3);
     });

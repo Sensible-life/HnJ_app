@@ -18,9 +18,13 @@ import {
   getItemsForSession,
   updateItemState,
   updateItemRepairInfo,
+  updateItemProblemInfo,
+  updateSessionOpinion,
   completeSession,
   insertMedia,
+  getSession,
   LocalItem,
+  LocalSession,
 } from "../lib/db";
 import { syncPendingSessions } from "../lib/sync";
 import { uploadPendingMedia } from "../lib/mediaSync";
@@ -44,12 +48,18 @@ const PHOTO_STAGES: { key: "BEFORE" | "GENERAL" | "AFTER"; label: string }[] = [
 export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDone }: Props) {
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<LocalItem[]>([]);
+  const [session, setSession] = useState<LocalSession | null>(null);
+  const [opinion, setOpinion] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const rows = await getItemsForSession(sessionId);
+    const [rows, sessionRow] = await Promise.all([getItemsForSession(sessionId), getSession(sessionId)]);
     setItems(rows);
+    if (sessionRow) {
+      setSession(sessionRow);
+      setOpinion((prev) => prev || sessionRow.inspector_opinion || "");
+    }
     setLoading(false);
   }, [sessionId]);
 
@@ -115,6 +125,37 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
     await updateItemRepairInfo(item.id, next);
   }
 
+  // FR: docs/FEATURE_SCOPE.md 우선순위 A — 문제 내용/조치 내용/호텔 승인 필요 여부
+  async function handleProblemInfoChange(
+    item: LocalItem,
+    patch: Partial<{ problem_description: string | null; action_description: string | null; requires_hotel_approval: number }>,
+  ) {
+    const next = {
+      problemDescription: patch.problem_description !== undefined ? patch.problem_description : item.problem_description,
+      actionDescription: patch.action_description !== undefined ? patch.action_description : item.action_description,
+      requiresHotelApproval:
+        patch.requires_hotel_approval !== undefined ? patch.requires_hotel_approval === 1 : item.requires_hotel_approval === 1,
+    };
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === item.id
+          ? {
+              ...it,
+              problem_description: next.problemDescription,
+              action_description: next.actionDescription,
+              requires_hotel_approval: next.requiresHotelApproval ? 1 : 0,
+            }
+          : it,
+      ),
+    );
+    await updateItemProblemInfo(item.id, next);
+  }
+
+  function handleOpinionChange(text: string) {
+    setOpinion(text);
+    updateSessionOpinion(sessionId, text || null);
+  }
+
   async function handleComplete() {
     if (completedCount < items.length) {
       Alert.alert("점검 미완료", "12개 구역을 모두 점검해주세요.");
@@ -122,6 +163,7 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
     }
     setSaving(true);
     try {
+      await updateSessionOpinion(sessionId, opinion || null);
       await completeSession(sessionId, new Date().toISOString());
       const [result] = await Promise.all([syncPendingSessions(), uploadPendingMedia()]);
       if (result.synced > 0) {
@@ -213,11 +255,59 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
                     value={item.revisit_date ?? ""}
                     onChangeText={(v) => handleRepairInfoChange(item, "revisit_date", v)}
                   />
+
+                  <Text style={styles.repairLabel}>문제 내용</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 배관 실리콘 노후로 인한 곰팡이"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.problem_description ?? ""}
+                    onChangeText={(v) => handleProblemInfoChange(item, { problem_description: v || null })}
+                  />
+
+                  <Text style={styles.repairLabel}>조치 내용</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 실리콘 재시공"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.action_description ?? ""}
+                    onChangeText={(v) => handleProblemInfoChange(item, { action_description: v || null })}
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.approvalToggle, item.requires_hotel_approval === 1 && styles.approvalToggleActive]}
+                    onPress={() =>
+                      handleProblemInfoChange(item, {
+                        requires_hotel_approval: item.requires_hotel_approval === 1 ? 0 : 1,
+                      })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.approvalToggleText,
+                        item.requires_hotel_approval === 1 && styles.approvalToggleTextActive,
+                      ]}
+                    >
+                      {item.requires_hotel_approval === 1 ? "✓ 호텔 승인 필요" : "호텔 승인 필요로 표시"}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </View>
           );
         })}
+
+        <View style={styles.opinionBlock}>
+          <Text style={styles.repairLabel}>담당자 의견 (선택)</Text>
+          <TextInput
+            style={[styles.input, styles.opinionInput]}
+            placeholder="BATH PRO 점검 총평이나 특이사항을 입력하세요"
+            placeholderTextColor={colors.textSecondary}
+            value={opinion}
+            onChangeText={handleOpinionChange}
+            multiline
+          />
+        </View>
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + spacing.md }]}>
@@ -293,6 +383,18 @@ const styles = StyleSheet.create({
     fontSize: font.sm,
     color: colors.textPrimary,
   },
+  approvalToggle: {
+    marginTop: spacing.sm,
+    paddingVertical: moderateScale(10),
+    borderRadius: radius.input,
+    backgroundColor: colors.backgroundSubtle,
+    alignItems: "center",
+  },
+  approvalToggleActive: { backgroundColor: colors.statusUrgentBg },
+  approvalToggleText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
+  approvalToggleTextActive: { color: colors.statusUrgent },
+  opinionBlock: { marginBottom: spacing.md },
+  opinionInput: { minHeight: moderateScale(80), textAlignVertical: "top" },
   bottomBar: {
     position: "absolute",
     left: 0,

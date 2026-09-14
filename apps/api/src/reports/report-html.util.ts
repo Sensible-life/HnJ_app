@@ -5,6 +5,7 @@ const STATE_LABEL: Record<string, string> = {
   NORMAL: '정상',
   CAUTION: '주의',
   URGENT: '긴급',
+  NOT_APPLICABLE: '해당 없음',
 };
 
 const STATE_COLOR: Record<string, { bg: string; fg: string }> = {
@@ -12,6 +13,14 @@ const STATE_COLOR: Record<string, { bg: string; fg: string }> = {
   NORMAL: { bg: '#DCFCE7', fg: '#16A34A' },
   CAUTION: { bg: '#FEF3C7', fg: '#B45309' },
   URGENT: { bg: '#FEE2E2', fg: '#DC2626' },
+  NOT_APPLICABLE: { bg: '#F5F6F8', fg: '#8A8F98' },
+};
+
+const SERVICE_TYPE_LABEL: Record<string, string> = {
+  INITIAL_RENEWAL: '최초 리뉴얼',
+  REGULAR: '정기점검',
+  EMERGENCY: '긴급출동',
+  REINSPECTION: '재점검',
 };
 
 export function renderReportHtml(session: ReportSessionInput, items: ReportItemInput[]): string {
@@ -22,15 +31,23 @@ export function renderReportHtml(session: ReportSessionInput, items: ReportItemI
   const rows = items
     .map((item) => {
       const c = STATE_COLOR[item.state] ?? STATE_COLOR.UNSET;
+      const detailLines = [
+        item.comment ? `메모: ${item.comment}` : '',
+        item.problem_description ? `문제 내용: ${item.problem_description}` : '',
+        item.action_description ? `조치 내용: ${item.action_description}` : '',
+      ].filter(Boolean);
       return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #F5F6F8;">
-          <div>
-            <div style="font-size:14px;font-weight:600;color:#111827;">${item.item_name}</div>
-            ${item.comment ? `<div style="font-size:12px;color:#8A8F98;margin-top:2px;">${item.comment}</div>` : ''}
+        <div style="padding:12px 0;border-top:1px solid #F5F6F8;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-size:14px;font-weight:600;color:#111827;">
+              ${item.item_name}
+              ${item.requires_hotel_approval ? '<span style="margin-left:6px;font-size:11px;color:#DC2626;">● 호텔 승인 필요</span>' : ''}
+            </div>
+            <span style="background:${c.bg};color:${c.fg};font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;white-space:nowrap;">
+              ${STATE_LABEL[item.state] ?? item.state}
+            </span>
           </div>
-          <span style="background:${c.bg};color:${c.fg};font-size:12px;font-weight:600;padding:4px 12px;border-radius:999px;">
-            ${STATE_LABEL[item.state] ?? item.state}
-          </span>
+          ${detailLines.map((line) => `<div style="font-size:12px;color:#8A8F98;margin-top:4px;">${line}</div>`).join('')}
         </div>`;
     })
     .join('');
@@ -49,7 +66,16 @@ export function renderReportHtml(session: ReportSessionInput, items: ReportItemI
     <div style="font-size:13px;color:#8A8F98;">
       ${session.completed_at ? new Date(session.completed_at).toLocaleString('ko-KR') : ''}
       ${session.inspector_name ? ` · ${session.inspector_name}` : ''}
+      ${session.service_type ? ` · ${SERVICE_TYPE_LABEL[session.service_type] ?? session.service_type}` : ''}
     </div>
+    ${
+      session.inspector_opinion
+        ? `<div style="margin-top:12px;background:#EAF2FF;border-radius:16px;padding:12px 16px;font-size:13px;color:#111827;">
+            <div style="font-size:11px;font-weight:700;color:#2F6FED;margin-bottom:2px;">담당자 의견</div>
+            ${session.inspector_opinion}
+          </div>`
+        : ''
+    }
 
     <div style="display:flex;gap:8px;margin-top:20px;">
       <div style="flex:1;background:#FFFFFF;border-radius:20px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,0.06);">

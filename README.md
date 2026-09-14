@@ -6,6 +6,7 @@
 > 요구사항 원문: `[SRS] BATH PRO 및 ROOM PRO 앱 개발 요구사항 정의서 v2.0.md`
 > 상세 빌드 계획: [`BUILD_PLAN.md`](./BUILD_PLAN.md)
 > 작업 목록: [`TODO.md`](./TODO.md)
+> 기능 스코프 정리: [`docs/FEATURE_SCOPE.md`](./docs/FEATURE_SCOPE.md)
 
 ## 프로젝트 개요
 
@@ -81,6 +82,7 @@ npm run dev:mobile  # 모바일 앱 (Expo)
 
 - [`BUILD_PLAN.md`](./BUILD_PLAN.md) — 단계별 빌드 계획, 아키텍처, 일정
 - [`TODO.md`](./TODO.md) — Phase별 실행 태스크 체크리스트 (Phase 0~7 진행 상황)
+- [`docs/FEATURE_SCOPE.md`](./docs/FEATURE_SCOPE.md) — SRS/TODO/PDF 메뉴 리스트 기준 전체 기능 스코프 및 구현 상태
 - [`docs/ERD.md`](./docs/ERD.md) — 데이터 모델 ERD (Draft)
 - [`docs/API_SPEC.md`](./docs/API_SPEC.md) — API 명세서 (Draft)
 - [`docs/DESIGN_TOKENS.md`](./docs/DESIGN_TOKENS.md) — 디자인 톤앤매너/컬러/컴포넌트 패턴

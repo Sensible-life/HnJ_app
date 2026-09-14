@@ -36,12 +36,15 @@ export interface Schedule {
 
 export interface ReportItem {
   item_name: string;
-  state: "UNSET" | "NORMAL" | "CAUTION" | "URGENT";
+  state: "UNSET" | "NORMAL" | "CAUTION" | "URGENT" | "NOT_APPLICABLE";
   comment?: string | null;
   photo_count?: number;
   repair_material?: string | null;
   repair_cost?: number | null;
   revisit_date?: string | null;
+  problem_description?: string | null;
+  action_description?: string | null;
+  requires_hotel_approval?: boolean;
 }
 
 export interface ReportSession {
@@ -52,6 +55,8 @@ export interface ReportSession {
   started_at: string;
   completed_at?: string | null;
   inspector_name?: string;
+  service_type?: "INITIAL_RENEWAL" | "REGULAR" | "EMERGENCY" | "REINSPECTION";
+  inspector_opinion?: string | null;
 }
 
 export interface StoredInspection {

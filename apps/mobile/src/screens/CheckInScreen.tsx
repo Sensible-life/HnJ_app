@@ -1,12 +1,20 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from "react-native";
+import { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  Alert,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { colors, radius, spacing, shadow, font } from "../theme/tokens";
 import { hp, moderateScale } from "../theme/responsive";
-import { createSession, insertItems } from "../lib/db";
+import { createSession, insertItems, ServiceType } from "../lib/db";
 import { ROOM_PRO_ITEMS } from "../data/inspectionItems";
+import { fetchHotels, fetchInspectors, ApiHotel, ApiUser } from "../lib/api";
 
 const FLOORS = ["5F", "6F", "7F", "8F", "9F"];
 const ROOMS_BY_FLOOR: Record<string, string[]> = {
@@ -17,11 +25,20 @@ const ROOMS_BY_FLOOR: Record<string, string[]> = {
   "9F": ["901", "902", "903"],
 };
 
-// TODO: 실제 로그인 사용자의 담당 호텔로 교체 (현재는 단일 호텔 가정)
-const HOTEL_NAME = "그랜드 워커힐";
+// FR: docs/FEATURE_SCOPE.md 우선순위 A — 서비스 구분
+const SERVICE_TYPES: { value: ServiceType; label: string }[] = [
+  { value: "INITIAL_RENEWAL", label: "최초 리뉴얼" },
+  { value: "REGULAR", label: "정기점검" },
+  { value: "EMERGENCY", label: "긴급출동" },
+  { value: "REINSPECTION", label: "재점검" },
+];
 
 type Props = {
-  onCheckedIn: (sessionId: string, roomLabel: string, hotelName: string) => void;
+  onCheckedIn: (
+    sessionId: string,
+    roomLabel: string,
+    hotelName: string,
+  ) => void;
   onCancel: () => void;
 };
 
@@ -33,7 +50,36 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
   const [room, setRoom] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function startCheckIn(roomLabel: string, method: "QR" | "NFC" | "MANUAL") {
+  const [hotels, setHotels] = useState<ApiHotel[]>([]);
+  const [inspectors, setInspectors] = useState<ApiUser[]>([]);
+  const [hotelId, setHotelId] = useState<string | null>(null);
+  const [inspectorId, setInspectorId] = useState<string | null>(null);
+  const [serviceType, setServiceType] = useState<ServiceType>("REGULAR");
+
+  useEffect(() => {
+    fetchHotels()
+      .then((list) => {
+        setHotels(list);
+        if (list.length > 0) setHotelId((prev) => prev ?? list[0].id);
+      })
+      .catch(() => {
+        // 오프라인이거나 서버 접속 불가 시에도 체크인 자체는 계속 진행 가능해야 하므로 조용히 무시
+      });
+    fetchInspectors()
+      .then((list) => {
+        setInspectors(list);
+        if (list.length > 0) setInspectorId((prev) => prev ?? list[0].id);
+      })
+      .catch(() => {});
+  }, []);
+
+  const selectedHotel = hotels.find((h) => h.id === hotelId) ?? null;
+  const selectedInspector = inspectors.find((u) => u.id === inspectorId) ?? null;
+
+  async function startCheckIn(
+    roomLabel: string,
+    method: "QR" | "NFC" | "MANUAL",
+  ) {
     if (busy) return;
     setBusy(true);
     try {
@@ -46,12 +92,13 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         gpsLng = pos.coords.longitude;
       }
 
+      const hotelName = selectedHotel?.name ?? "그랜드 워커힐";
       const sessionId = `sess_${Date.now()}`;
       const now = new Date().toISOString();
       await createSession({
         id: sessionId,
         parent_session_id: null,
-        hotel_name: HOTEL_NAME,
+        hotel_name: hotelName,
         room_label: roomLabel,
         type: "ROOM_PRO",
         status: "IN_PROGRESS",
@@ -60,6 +107,9 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         gps_lng: gpsLng,
         started_at: now,
         completed_at: null,
+        inspector_name: selectedInspector?.name ?? null,
+        service_type: serviceType,
+        inspector_opinion: null,
       });
       await insertItems(
         ROOM_PRO_ITEMS.map((def) => ({
@@ -73,10 +123,13 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
           repair_material: null,
           repair_cost: null,
           revisit_date: null,
+          problem_description: null,
+          action_description: null,
+          requires_hotel_approval: 0,
         })),
       );
 
-      onCheckedIn(sessionId, roomLabel, HOTEL_NAME);
+      onCheckedIn(sessionId, roomLabel, hotelName);
     } catch (err) {
       Alert.alert("체크인 실패", "다시 시도해주세요.");
     } finally {
@@ -95,9 +148,18 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
     if (!permission) return <View style={styles.screen} />;
     if (!permission.granted) {
       return (
-        <View style={[styles.screen, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <View
+          style={[
+            styles.screen,
+            styles.center,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
           <Text style={styles.hint}>카메라 권한이 필요합니다</Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={requestPermission}
+          >
             <Text style={styles.primaryButtonText}>권한 허용</Text>
           </TouchableOpacity>
         </View>
@@ -128,17 +190,25 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
       style={styles.screen}
       contentContainerStyle={[
         styles.content,
-        { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + hp(8) },
+        {
+          paddingTop: insets.top + spacing.lg,
+          paddingBottom: insets.bottom + hp(8),
+        },
       ]}
     >
       <TouchableOpacity onPress={onCancel}>
         <Text style={styles.back}>{"< 뒤로"}</Text>
       </TouchableOpacity>
       <Text style={styles.header}>퀵 체크인</Text>
-      <Text style={styles.subheader}>QR 스캔, NFC 태깅 또는 직접 선택으로 체크인하세요</Text>
+      <Text style={styles.subheader}>
+        QR 스캔, NFC 태깅 또는 직접 선택으로 체크인하세요
+      </Text>
 
       <View style={styles.quickRow}>
-        <TouchableOpacity style={[styles.quickButton, styles.quickPrimary]} onPress={() => setScanMode(true)}>
+        <TouchableOpacity
+          style={[styles.quickButton, styles.quickPrimary]}
+          onPress={() => setScanMode(true)}
+        >
           <Text style={styles.quickPrimaryText}>QR 스캔</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.quickButton} onPress={handleNfcPress}>
@@ -146,7 +216,60 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.sectionTitle}>1단계. 층 선택</Text>
+      {hotels.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>호텔 선택</Text>
+          <View style={styles.pillRow}>
+            {hotels.map((h) => (
+              <TouchableOpacity
+                key={h.id}
+                style={[styles.pill, hotelId === h.id && styles.pillActive]}
+                onPress={() => setHotelId(h.id)}
+              >
+                <Text style={[styles.pillText, hotelId === h.id && styles.pillTextActive]}>
+                  {h.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
+      {inspectors.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>담당자 선택</Text>
+          <View style={styles.pillRow}>
+            {inspectors.map((u) => (
+              <TouchableOpacity
+                key={u.id}
+                style={[styles.pill, inspectorId === u.id && styles.pillActive]}
+                onPress={() => setInspectorId(u.id)}
+              >
+                <Text style={[styles.pillText, inspectorId === u.id && styles.pillTextActive]}>
+                  {u.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
+
+      <Text style={styles.sectionTitle}>서비스 구분</Text>
+      <View style={styles.pillRow}>
+        {SERVICE_TYPES.map((s) => (
+          <TouchableOpacity
+            key={s.value}
+            style={[styles.pill, serviceType === s.value && styles.pillActive]}
+            onPress={() => setServiceType(s.value)}
+          >
+            <Text style={[styles.pillText, serviceType === s.value && styles.pillTextActive]}>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.sectionTitle}>층 선택</Text>
       <View style={styles.pillRow}>
         {FLOORS.map((f) => (
           <TouchableOpacity
@@ -157,12 +280,16 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
               setRoom(null);
             }}
           >
-            <Text style={[styles.pillText, floor === f && styles.pillTextActive]}>{f}</Text>
+            <Text
+              style={[styles.pillText, floor === f && styles.pillTextActive]}
+            >
+              {f}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>2단계. 객실 선택</Text>
+      <Text style={styles.sectionTitle}>객실 선택</Text>
       <View style={styles.pillRow}>
         {ROOMS_BY_FLOOR[floor].map((r) => (
           <TouchableOpacity
@@ -170,7 +297,11 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
             style={[styles.pill, room === r && styles.pillActive]}
             onPress={() => setRoom(r)}
           >
-            <Text style={[styles.pillText, room === r && styles.pillTextActive]}>{r}</Text>
+            <Text
+              style={[styles.pillText, room === r && styles.pillTextActive]}
+            >
+              {r}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -180,7 +311,9 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         disabled={!room || busy}
         onPress={() => room && startCheckIn(`${room}호`, "MANUAL")}
       >
-        <Text style={styles.primaryButtonText}>{busy ? "체크인 중..." : "체크인 완료"}</Text>
+        <Text style={styles.primaryButtonText}>
+          {busy ? "체크인 중..." : "체크인 완료"}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -190,9 +323,22 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   center: { alignItems: "center", justifyContent: "center" },
   content: { paddingHorizontal: spacing.lg },
-  back: { color: colors.primary, fontSize: font.base, marginBottom: spacing.md },
-  header: { fontSize: font.display, fontWeight: "700", color: colors.textPrimary },
-  subheader: { fontSize: font.sm, color: colors.textSecondary, marginTop: moderateScale(4), marginBottom: spacing.lg },
+  back: {
+    color: colors.primary,
+    fontSize: font.base,
+    marginBottom: spacing.md,
+  },
+  header: {
+    fontSize: font.display,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  subheader: {
+    fontSize: font.sm,
+    color: colors.textSecondary,
+    marginTop: moderateScale(4),
+    marginBottom: spacing.lg,
+  },
   hint: { color: colors.textSecondary, marginBottom: spacing.md },
   quickRow: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.lg },
   quickButton: {
@@ -206,12 +352,22 @@ const styles = StyleSheet.create({
   quickPrimary: { backgroundColor: colors.primary },
   quickText: { fontWeight: "700", color: colors.textPrimary },
   quickPrimaryText: { fontWeight: "700", color: "#FFFFFF" },
-  sectionTitle: { fontSize: font.md, fontWeight: "700", color: colors.textPrimary, marginBottom: spacing.sm },
-  pillRow: { flexDirection: "row", flexWrap: "wrap", gap: moderateScale(8), marginBottom: spacing.lg },
+  sectionTitle: {
+    fontSize: font.md,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: moderateScale(8),
+    marginBottom: spacing.lg,
+  },
   pill: {
     paddingVertical: moderateScale(10),
     paddingHorizontal: moderateScale(18),
-    borderRadius: radius.pill,
+    borderRadius: radius.input,
     backgroundColor: colors.backgroundSubtle,
   },
   pillActive: { backgroundColor: colors.primary },

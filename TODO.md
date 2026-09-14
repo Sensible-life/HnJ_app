@@ -87,3 +87,40 @@
 ## 상시 항목
 - [ ] 요구사항 변경 시 SRS 및 이 문서 동기화
 - [ ] 매 Phase 종료 시 `BUILD_PLAN.md` DoD 기준 검토
+
+## PDF 메뉴 리스트 반영 스코프
+> 상세 기능 매핑은 `docs/FEATURE_SCOPE.md` 참고. 아래 항목은 PDF 원안에는 있었지만 기존 MVP/TODO에서 약하거나 빠져 있던 기능이다.
+
+### 우선순위 A — 점검/리포트 품질에 바로 영향 (구현 완료)
+- [x] 점검 상태에 `해당 없음`(NOT_APPLICABLE) 추가 — `ThreeStateToggle`이 4-state로 확장(정상/주의/긴급/해당없음), Prisma `ItemState` enum·리포트 HTML/PDF 라벨·색상 매핑까지 반영
+- [x] 서비스 구분 추가: 최초 리뉴얼 / 정기점검 / 긴급출동 / 재점검 — `CheckInScreen`에 선택 UI, 로컬 SQLite `sessions.service_type`, Prisma `ServiceType` enum, 리포트 헤더에 라벨 표시
+- [x] 항목별 문제 내용 입력 — `RoomInspectionScreen`/`BathProInspectionScreen`의 주의/긴급 항목에 입력 필드, `inspection_items.problem_description`, 리포트/승인페이지에 노출
+- [x] 항목별 현장 조치 내용 입력 — 위와 동일 경로로 `action_description` 추가
+- [x] 담당자 의견 입력 — 세션 단위(점검 완료 전 총평 텍스트)로 구현: `sessions.inspector_opinion`, Prisma `InspectionSession.inspectorOpinion`, 리포트 헤더 하이라이트 박스, 관리자 웹 객실 타임라인에 표시
+- [x] 호텔 승인 필요 여부 입력 — 항목별 토글(`requires_hotel_approval`), `POST /inspections/sync`가 URGENT 또는 이 플래그가 true인 항목에 대해 승인 티켓 생성하도록 게이팅 로직 확장
+- [x] 호텔 담당자 의견/답변 입력 — 1-Click 승인/재점검 웹뷰(`approval-page.util.ts`)에 코멘트 textarea 추가, `PATCH` 대신 `POST .../approve|reinspect`가 `comment`를 받아 `TicketRecord.comment`에 저장, 처리 완료 화면에 재노출
+- [x] 실제 호텔 선택/담당자 선택 흐름 정리 — `CheckInScreen`이 하드코딩된 `HOTEL_NAME` 대신 `GET /hotels`/`GET /admin/users`(INSPECTOR 필터)로 실제 목록을 불러와 선택하도록 교체 (오프라인/서버 미기동 시에도 체크인 자체는 진행 가능하도록 폴백 유지)
+
+검증: `apps/api` `npm run build`/`npm run test:e2e`(8/8 통과)/실제 서버 기동 후 curl로 sync→승인 티켓 생성→코멘트와 함께 승인→리포트/승인페이지 렌더링 전체 플로우 확인, `apps/mobile` `npx tsc --noEmit` 클린, `apps/admin-web` `npm run build`/`npx eslint src` 클린.
+
+### 우선순위 B — 운영/관리 고도화
+- [ ] 객실 유형 기록
+- [ ] 청소 담당팀 기록
+- [ ] 청소 완료시간 기록
+- [ ] 분실물 발견 여부 및 보관 장소 기록
+- [ ] 담당자별 점검 실적
+- [ ] 호텔별 문제 발생 순위
+- [ ] 객실별 문제 발생 횟수
+- [ ] 반복 문제 객실/재발 횟수
+- [ ] 전월 대비 개선율
+- [ ] 화장실 상태 변화 그래프
+- [ ] 청소팀별 인스펙션 점수
+- [ ] 날짜별 사진 비교
+- [ ] 긴급출동/재점검 일정 타입
+- [ ] 호텔 담당자와 일정 공유
+
+### 우선순위 C — 비용/인프라 영향 큰 후순위
+- [ ] 짧은 동영상 등록
+- [ ] SMS 문자 알림
+- [ ] PDF 공유 UX
+- [ ] 요금 관리

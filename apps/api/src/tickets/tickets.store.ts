@@ -8,10 +8,13 @@ export interface TicketRecord {
   repairMaterial?: string | null;
   repairCost?: number | null;
   revisitDate?: string | null;
+  problemDescription?: string | null;
+  actionDescription?: string | null;
+  requiresApproval?: boolean;
   status: 'PENDING' | 'APPROVED' | 'REINSPECT_REQUESTED';
   createdAt: string;
   resolvedAt?: string;
-  comment?: string;
+  comment?: string; // 호텔 담당자 의견/답변 (1-Click 승인/재점검 시 입력)
 }
 
 /**
