@@ -1,9 +1,11 @@
 import { moderateScale, normalizeFont, wp } from "./responsive";
 
 export const colors = {
-  background: "#FFFFFF",
-  backgroundSubtle: "#F5F6F8",
+  background: "#F5F7F6",
+  backgroundSubtle: "#F5F7F6",
   card: "#FFFFFF",
+  border: "#F1F2F4",
+  borderSubtle: "#E7EAF0",
   primary: "#2F6FED",
   primarySoft: "#EAF2FF",
   accentCoral: "#F76C6C",
@@ -21,7 +23,7 @@ export const colors = {
 
 // 고정 px 대신 화면 비율 기반 스케일 함수를 사용 — 폰 사이즈가 달라도 비율이 유지된다.
 export const radius = {
-  card: moderateScale(20),
+  card: moderateScale(12),
   pill: 999, // 완전한 캡슐 모양은 스케일과 무관하게 항상 999 이상이면 충분
   input: moderateScale(12),
 };

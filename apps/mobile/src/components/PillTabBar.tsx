@@ -11,11 +11,20 @@ const ICONS: Record<string, string> = {
   Profile: "◐",
 };
 
-export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function PillTabBar({
+  state,
+  descriptors,
+  navigation,
+}: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: insets.bottom + moderateScale(12) }]}>
+    <View
+      style={[
+        styles.wrap,
+        { paddingBottom: insets.bottom + moderateScale(12) },
+      ]}
+    >
       <View style={styles.pillContainer}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -23,7 +32,11 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
           const label = (options.title ?? route.name) as string;
 
           const onPress = () => {
-            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+            const event = navigation.emit({
+              type: "tabPress",
+              target: route.key,
+              canPreventDefault: true,
+            });
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
@@ -33,7 +46,13 @@ export function PillTabBar({ state, descriptors, navigation }: BottomTabBarProps
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
-              style={[styles.tab, isFocused && styles.tabActive]}
+              style={[
+                styles.tab,
+                isFocused && styles.tabActive,
+                isFocused &&
+                  route.name === "Inspection" &&
+                  styles.inspectionTabActive,
+              ]}
             >
               <Text style={[styles.icon, isFocused && styles.iconActive]}>
                 {ICONS[route.name] ?? "•"}
@@ -72,7 +91,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabActive: { backgroundColor: colors.navActiveBg },
+  inspectionTabActive: {
+    flex: 1.3,
+    paddingHorizontal: moderateScale(18),
+  },
   icon: { fontSize: font.lg, color: colors.textSecondary },
   iconActive: { color: "#FFFFFF" },
-  labelActive: { color: "#FFFFFF", marginLeft: moderateScale(6), fontWeight: "600", fontSize: font.sm },
+  labelActive: {
+    color: "#FFFFFF",
+    marginLeft: moderateScale(6),
+    fontWeight: "600",
+    fontSize: font.sm,
+  },
 });
