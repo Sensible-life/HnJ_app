@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { api, Hotel, AdminUser, Schedule } from "../../../lib/api";
+import { api, API_BASE_URL, Hotel, AdminUser, Schedule, ScheduleType } from "../../../lib/api";
+
+const SCHEDULE_TYPE_LABEL: Record<ScheduleType, string> = {
+  INITIAL_RENEWAL: "최초 리뉴얼",
+  REGULAR: "정기점검",
+  EMERGENCY: "긴급출동",
+  REINSPECTION: "재점검",
+};
+const SCHEDULE_TYPES: ScheduleType[] = ["REGULAR", "EMERGENCY", "REINSPECTION", "INITIAL_RENEWAL"];
 
 // FR: "호텔별 정기 방문 주기 자동 생성, 담당자 배정, 미방문 알림" — TODO.md Phase 6
 export default function SchedulePage() {
@@ -14,7 +22,9 @@ export default function SchedulePage() {
   const [formHotelId, setFormHotelId] = useState("");
   const [formUserId, setFormUserId] = useState("");
   const [formVisits, setFormVisits] = useState(4);
+  const [formScheduleType, setFormScheduleType] = useState<ScheduleType>("REGULAR");
   const [submitting, setSubmitting] = useState(false);
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -43,7 +53,12 @@ export default function SchedulePage() {
     if (!formHotelId || !formUserId) return;
     setSubmitting(true);
     try {
-      await api.createSchedule({ hotelId: formHotelId, assignedUserId: formUserId, visitsPerMonth: formVisits });
+      await api.createSchedule({
+        hotelId: formHotelId,
+        assignedUserId: formUserId,
+        visitsPerMonth: formVisits,
+        scheduleType: formScheduleType,
+      });
       await load();
     } finally {
       setSubmitting(false);
@@ -53,6 +68,19 @@ export default function SchedulePage() {
   async function handleReassign(scheduleId: string, userId: string) {
     await api.reassignSchedule(scheduleId, userId);
     await load();
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 호텔 담당자와 일정 공유
+  async function handleShare(scheduleId: string) {
+    const { path } = await api.getScheduleShareLink(scheduleId);
+    const url = `${API_BASE_URL}${path}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // 클립보드 권한이 없는 브라우저 환경에서도 링크 자체는 화면에 표시해준다.
+    }
+    setCopiedShareId(scheduleId);
+    window.setTimeout(() => setCopiedShareId((cur) => (cur === scheduleId ? null : cur)), 2500);
   }
 
   const overdueCount = schedules.filter((s) => s.overdue).length;
@@ -109,6 +137,20 @@ export default function SchedulePage() {
             className="w-24 rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
           />
         </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-foreground-secondary">일정 유형</label>
+          <select
+            className="rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
+            value={formScheduleType}
+            onChange={(e) => setFormScheduleType(e.target.value as ScheduleType)}
+          >
+            {SCHEDULE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {SCHEDULE_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="submit"
           disabled={submitting}
@@ -131,6 +173,9 @@ export default function SchedulePage() {
                 <div>
                   <p className="text-sm font-medium text-foreground">
                     {s.hotel?.name ?? s.hotelId}
+                    <span className="ml-2 rounded-full bg-primary-soft px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      {SCHEDULE_TYPE_LABEL[s.scheduleType]}
+                    </span>
                     {s.overdue && (
                       <span className="ml-2 rounded-full bg-status-urgent-bg px-2 py-0.5 text-[11px] font-semibold text-status-urgent">
                         미방문
@@ -141,17 +186,26 @@ export default function SchedulePage() {
                     월 {s.visitsPerMonth}회 · 지난 방문 {s.lastVisitDate ?? "-"} · 다음 방문 예정 {s.nextVisitDate ?? "-"}
                   </p>
                 </div>
-                <select
-                  className="rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
-                  value={s.assignedUserId}
-                  onChange={(e) => handleReassign(s.id, e.target.value)}
-                >
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
+                    value={s.assignedUserId}
+                    onChange={(e) => handleReassign(s.id, e.target.value)}
+                  >
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => handleShare(s.id)}
+                    className="rounded-full bg-background-subtle px-3 py-2 text-xs font-semibold text-foreground-secondary transition hover:opacity-80"
+                  >
+                    {copiedShareId === s.id ? "링크 복사됨 ✓" : "🔗 호텔과 공유"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

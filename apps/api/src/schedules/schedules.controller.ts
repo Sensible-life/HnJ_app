@@ -30,6 +30,23 @@ export class SchedulesController {
     return this.schedulesStore.list().map((s) => this.enrich(s));
   }
 
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 호텔 담당자와 일정 공유용 링크 발급
+  @Post(':id/share-link')
+  getShareLink(@Param('id') id: string) {
+    const token = this.schedulesStore.getOrCreateShareToken(id);
+    if (!token) throw new NotFoundException('일정을 찾을 수 없습니다.');
+    return { token, path: `/schedules/shared/${token}` };
+  }
+
+  // 공개 조회 — 호텔 담당자가 로그인 없이 자신의 호텔 방문 일정을 확인하는 용도.
+  // 해당 일정과 같은 호텔의 모든 일정을 함께 보여준다(호텔 담당자 입장에서는 호텔 단위로 의미가 있음).
+  @Get('shared/:token')
+  getShared(@Param('token') token: string) {
+    const schedule = this.schedulesStore.findByShareToken(token);
+    if (!schedule) throw new NotFoundException('공유된 일정을 찾을 수 없습니다.');
+    return this.schedulesStore.listByHotel(schedule.hotelId).map((s) => this.enrich(s));
+  }
+
   @Post()
   create(@Body() dto: CreateScheduleDto) {
     const schedule = this.schedulesStore.create(dto);

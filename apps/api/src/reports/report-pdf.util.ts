@@ -48,10 +48,29 @@ export function generateReportPdf(
         session.completed_at ? new Date(session.completed_at).toLocaleString('ko-KR') : '',
         session.inspector_name ?? '',
         session.service_type ? (SERVICE_TYPE_LABEL[session.service_type] ?? session.service_type) : '',
+        session.room_type ?? '',
       ]
         .filter(Boolean)
         .join(' · '),
     );
+    if (session.cleaning_team || session.cleaning_completed_at) {
+      doc.fontSize(9).fillColor('#8A8F98').text(
+        [
+          session.cleaning_team ? `청소팀: ${session.cleaning_team}` : '',
+          session.cleaning_completed_at
+            ? `청소 완료: ${new Date(session.cleaning_completed_at).toLocaleString('ko-KR')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      );
+    }
+    if (session.lost_item_found) {
+      doc
+        .fontSize(9)
+        .fillColor('#B45309')
+        .text(`분실물 발견${session.lost_item_location ? ` · 보관장소: ${session.lost_item_location}` : ''}`);
+    }
     if (session.inspector_opinion) {
       doc.moveDown(0.5);
       doc.fontSize(10).fillColor('#2F6FED').text('담당자 의견', { continued: false });
@@ -78,6 +97,9 @@ export function generateReportPdf(
       }
       if (item.comment) {
         doc.fontSize(9).fillColor('#8A8F98').text(`   메모: ${item.comment}`);
+      }
+      if (item.issue_type) {
+        doc.fontSize(9).fillColor('#8A8F98').text(`   유형: ${item.issue_type}`);
       }
       if (item.problem_description) {
         doc.fontSize(9).fillColor('#8A8F98').text(`   문제 내용: ${item.problem_description}`);

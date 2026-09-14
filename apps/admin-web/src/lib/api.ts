@@ -22,6 +22,8 @@ export interface AdminUser {
   createdAt: string;
 }
 
+export type ScheduleType = "INITIAL_RENEWAL" | "REGULAR" | "EMERGENCY" | "REINSPECTION";
+
 export interface Schedule {
   id: string;
   hotelId: string;
@@ -29,6 +31,9 @@ export interface Schedule {
   visitsPerMonth: number;
   nextVisitDate: string | null;
   lastVisitDate: string | null;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 긴급출동/재점검 일정 타입, 일정 공유
+  scheduleType: ScheduleType;
+  shareToken: string | null;
   hotel: Hotel | null;
   assignedUser: AdminUser | null;
   overdue: boolean;
@@ -45,6 +50,8 @@ export interface ReportItem {
   problem_description?: string | null;
   action_description?: string | null;
   requires_hotel_approval?: boolean;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 문제 유형(곰팡이/누수/악취 등)
+  issue_type?: string | null;
 }
 
 export interface ReportSession {
@@ -57,6 +64,12 @@ export interface ReportSession {
   inspector_name?: string;
   service_type?: "INITIAL_RENEWAL" | "REGULAR" | "EMERGENCY" | "REINSPECTION";
   inspector_opinion?: string | null;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물
+  room_type?: string | null;
+  cleaning_team?: string | null;
+  cleaning_completed_at?: string | null;
+  lost_item_found?: boolean;
+  lost_item_location?: string | null;
 }
 
 export interface StoredInspection {
@@ -74,6 +87,8 @@ export interface MediaRecord {
   itemId?: string;
   itemName?: string;
   mediaType: "BEFORE" | "AFTER" | "GENERAL";
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록
+  mediaKind?: "IMAGE" | "VIDEO";
   hotelName: string;
   roomLabel: string;
   capturedAt: string;
@@ -87,7 +102,29 @@ export interface DashboardStats {
   defectRatePercent: number;
   issueBreakdown: { itemName: string; caution: number; urgent: number }[];
   dailyTrend: { date: string; count: number }[];
-  byHotel: { hotelName: string; sessionCount: number; defectRate: number }[];
+  byHotel: { hotelName: string; sessionCount: number; badCount: number; defectRate: number; rank: number }[];
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B
+  byInspector: { inspectorName: string; sessionCount: number; badCount: number; urgentCount: number; defectRate: number }[];
+  byRoom: { hotelName: string; roomLabel: string; sessionCount: number; badCount: number }[];
+  recurringIssues: { hotelName: string; roomLabel: string; itemName: string; count: number }[];
+  improvementRatePercent: number | null;
+  byCleaningTeam: { teamName: string; sessionCount: number; score: number | null }[];
+  bathProTrend: { date: string; normal: number; caution: number; urgent: number }[];
+}
+
+export interface CleaningTeam {
+  id: string;
+  name: string;
+}
+
+export interface ServiceRate {
+  id: string;
+  hotelId: string | null;
+  serviceType: ScheduleType;
+  price: number;
+  unit: string;
+  note: string | null;
+  updatedAt: string;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -108,10 +145,17 @@ export const api = {
   createUser: (input: { name: string; email: string; phone?: string; role: Role; hotelIds: string[] }) =>
     request<AdminUser>("/admin/users", { method: "POST", body: JSON.stringify(input) }),
   getSchedules: () => request<Schedule[]>("/schedules"),
-  createSchedule: (input: { hotelId: string; assignedUserId: string; visitsPerMonth: number }) =>
-    request<Schedule>("/schedules", { method: "POST", body: JSON.stringify(input) }),
+  createSchedule: (input: {
+    hotelId: string;
+    assignedUserId: string;
+    visitsPerMonth: number;
+    scheduleType?: ScheduleType;
+  }) => request<Schedule>("/schedules", { method: "POST", body: JSON.stringify(input) }),
   reassignSchedule: (id: string, assignedUserId: string) =>
     request<Schedule>(`/schedules/${id}`, { method: "PATCH", body: JSON.stringify({ assignedUserId }) }),
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 호텔 담당자와 일정 공유
+  getScheduleShareLink: (id: string) =>
+    request<{ token: string; path: string }>(`/schedules/${id}/share-link`, { method: "POST" }),
   getStatsDashboard: () => request<DashboardStats>("/admin/stats/dashboard"),
   getInspectionsByRoom: (hotelName: string, roomLabel: string) =>
     request<StoredInspection[]>(
@@ -122,4 +166,17 @@ export const api = {
     request<MediaRecord[]>(
       `/media?hotelName=${encodeURIComponent(hotelName)}&roomLabel=${encodeURIComponent(roomLabel)}`,
     ),
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — PDF 공유 UX
+  getReportShare: (sessionId: string) =>
+    request<{ pdfUrl: string | null; webUrl: string | null; shareText: string }>(`/inspections/${sessionId}/share`),
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 청소 담당팀
+  getCleaningTeams: () => request<CleaningTeam[]>("/cleaning-teams"),
+  createCleaningTeam: (name: string) =>
+    request<CleaningTeam>("/cleaning-teams", { method: "POST", body: JSON.stringify({ name }) }),
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 요금 관리
+  getRates: () => request<ServiceRate[]>("/admin/rates"),
+  createRate: (input: { hotelId?: string | null; serviceType: ScheduleType; price: number; unit?: string; note?: string }) =>
+    request<ServiceRate>("/admin/rates", { method: "POST", body: JSON.stringify(input) }),
+  updateRate: (id: string, input: { price?: number; unit?: string; note?: string }) =>
+    request<ServiceRate>(`/admin/rates/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
 };

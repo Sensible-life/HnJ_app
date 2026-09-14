@@ -40,6 +40,12 @@ export default function RoomsPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickDrawTarget, setQuickDrawTarget] = useState<MediaRecord | null>(null);
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 날짜별 사진 비교 (임의의 두 시점 선택)
+  const [compareAId, setCompareAId] = useState<string>("");
+  const [compareBId, setCompareBId] = useState<string>("");
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — PDF 공유 UX
+  const [copiedShareId, setCopiedShareId] = useState<string | null>(null);
+  const [shareErrorId, setShareErrorId] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -71,6 +77,8 @@ export default function RoomsPage() {
       setTimeline(t);
       setMedia(m);
       setQuickDrawTarget(m[0] ?? null);
+      setCompareAId(m[0]?.id ?? "");
+      setCompareBId(m[1]?.id ?? m[0]?.id ?? "");
     } finally {
       setLoadingDetail(false);
     }
@@ -80,6 +88,24 @@ export default function RoomsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 선택된 객실이 바뀔 때 상세 데이터 로드(표준 패턴)
     if (selected) loadDetail(selected);
   }, [selected, loadDetail]);
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — PDF 공유 UX
+  async function handleShare(sessionId: string) {
+    try {
+      const { pdfUrl, webUrl, shareText } = await api.getReportShare(sessionId);
+      const text = shareText || webUrl || pdfUrl || "";
+      await navigator.clipboard.writeText(text);
+      setShareErrorId(null);
+      setCopiedShareId(sessionId);
+      window.setTimeout(() => setCopiedShareId((cur) => (cur === sessionId ? null : cur)), 2500);
+    } catch {
+      setShareErrorId(sessionId);
+      window.setTimeout(() => setShareErrorId((cur) => (cur === sessionId ? null : cur)), 2500);
+    }
+  }
+
+  const compareMediaA = useMemo(() => media.find((m) => m.id === compareAId) ?? null, [media, compareAId]);
+  const compareMediaB = useMemo(() => media.find((m) => m.id === compareBId) ?? null, [media, compareBId]);
 
   const beforeAfterPair = useMemo(() => {
     const before = media.find((m) => m.mediaType === "BEFORE");
@@ -135,25 +161,80 @@ export default function RoomsPage() {
             </section>
           )}
 
+          {media.length > 1 && (
+            <section className="mt-6 rounded-[20px] bg-white p-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
+              <h2 className="text-lg font-semibold text-foreground">날짜별 사진 비교</h2>
+              <p className="text-xs text-foreground-secondary">비교할 두 시점의 사진을 선택하세요</p>
+              <div className="mt-3 flex flex-wrap gap-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-foreground-secondary">이전 시점</label>
+                  <select
+                    className="rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
+                    value={compareAId}
+                    onChange={(e) => setCompareAId(e.target.value)}
+                  >
+                    {media.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.capturedAt.replace("T", " ").slice(0, 16)} · {m.itemName ?? m.mediaType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-foreground-secondary">이후 시점</label>
+                  <select
+                    className="rounded-xl border border-background-subtle bg-background-subtle px-3 py-2 text-sm outline-none focus:border-primary"
+                    value={compareBId}
+                    onChange={(e) => setCompareBId(e.target.value)}
+                  >
+                    {media.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.capturedAt.replace("T", " ").slice(0, 16)} · {m.itemName ?? m.mediaType}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {compareMediaA && compareMediaB && compareMediaA.mediaKind !== "VIDEO" && compareMediaB.mediaKind !== "VIDEO" ? (
+                <div className="mt-4 max-w-md">
+                  <BeforeAfterSlider beforeUrl={mediaUrl(compareMediaA)} afterUrl={mediaUrl(compareMediaB)} />
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-foreground-secondary">동영상은 비교 슬라이더로 표시할 수 없어요. 사진을 선택해주세요.</p>
+              )}
+            </section>
+          )}
+
           {media.length > 0 && (
             <section className="mt-6 rounded-[20px] bg-white p-6 shadow-[0_4px_16px_rgba(0,0,0,0.06)]">
               <h2 className="text-lg font-semibold text-foreground">Quick-Draw 마킹 도구</h2>
               <p className="text-xs text-foreground-secondary">사진을 선택하고 이슈 부위에 화살표/원으로 표시하세요</p>
               <div className="mt-3 flex gap-2 overflow-x-auto">
-                {media.map((m) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={m.id}
-                    src={mediaUrl(m)}
-                    alt={m.itemName ?? "점검 사진"}
-                    onClick={() => setQuickDrawTarget(m)}
-                    className={
-                      quickDrawTarget?.id === m.id
-                        ? "h-16 w-16 shrink-0 cursor-pointer rounded-lg object-cover ring-2 ring-primary"
-                        : "h-16 w-16 shrink-0 cursor-pointer rounded-lg object-cover opacity-70"
-                    }
-                  />
-                ))}
+                {media.map((m) =>
+                  m.mediaKind === "VIDEO" ? (
+                    <div
+                      key={m.id}
+                      className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-black/80"
+                      title="동영상 (Quick-Draw는 사진만 지원)"
+                    >
+                      <video src={mediaUrl(m)} className="h-full w-full object-cover opacity-70" muted />
+                      <span className="absolute inset-0 flex items-center justify-center text-lg text-white">▶</span>
+                    </div>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={m.id}
+                      src={mediaUrl(m)}
+                      alt={m.itemName ?? "점검 사진"}
+                      onClick={() => setQuickDrawTarget(m)}
+                      className={
+                        quickDrawTarget?.id === m.id
+                          ? "h-16 w-16 shrink-0 cursor-pointer rounded-lg object-cover ring-2 ring-primary"
+                          : "h-16 w-16 shrink-0 cursor-pointer rounded-lg object-cover opacity-70"
+                      }
+                    />
+                  ),
+                )}
               </div>
               {quickDrawTarget && (
                 <div className="mt-4 max-w-md">
@@ -194,6 +275,15 @@ export default function RoomsPage() {
                         >
                           리포트 보기 ↗
                         </a>
+                      )}
+                      {/* FR: docs/FEATURE_SCOPE.md 우선순위 C — PDF 공유 UX */}
+                      {(t.reportPdfUrl || t.reportWebUrl) && (
+                        <button
+                          onClick={() => handleShare(t.session.id)}
+                          className="rounded-full bg-background-subtle px-2.5 py-0.5 text-[11px] font-medium text-foreground-secondary hover:opacity-80"
+                        >
+                          {copiedShareId === t.session.id ? "복사됨 ✓" : shareErrorId === t.session.id ? "복사 실패" : "📄 PDF 공유"}
+                        </button>
                       )}
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">

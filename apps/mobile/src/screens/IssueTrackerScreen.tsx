@@ -95,8 +95,9 @@ export function IssueTrackerScreen() {
                 {item.state === "URGENT" ? "🚨 긴급" : item.state === "CAUTION" ? "⚠️ 주의" : item.state} · 사진{" "}
                 {item.photo_count}장
               </Text>
-              {(item.problem_description || item.action_description) && (
+              {(item.problem_description || item.action_description || item.issue_type) && (
                 <View style={styles.repairRow}>
+                  {item.issue_type && <Text style={styles.repairText}>유형: {item.issue_type}</Text>}
                   {item.problem_description && (
                     <Text style={styles.repairText}>문제: {item.problem_description}</Text>
                   )}

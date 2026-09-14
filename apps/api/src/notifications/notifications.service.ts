@@ -9,6 +9,14 @@ export interface AlimtalkPayload {
   actionUrl: string;
 }
 
+export interface SmsPayload {
+  targetName: string;
+  hotelName: string;
+  roomLabel: string;
+  itemName: string;
+  actionUrl: string;
+}
+
 export interface PushPayload {
   targetUserId: string;
   title: string;
@@ -44,6 +52,32 @@ export class NotificationsService {
     } catch (err) {
       this.notificationLog.record({
         channel: 'ALIMTALK',
+        target: payload.targetName,
+        summary: `${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}`,
+        status: 'FAILED',
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw err;
+    }
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — SMS 문자 알림
+  // 실제 서비스 연동(Solapi/NHN Cloud SMS API)에 필요한 계정이 아직 없어 콘솔 로그 mock으로 대체.
+  async sendSms(payload: SmsPayload): Promise<{ sent: boolean }> {
+    try {
+      this.logger.log(
+        `[SMS MOCK] ${payload.targetName}님께 발송: "${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}" 긴급 발생. 확인: ${payload.actionUrl}`,
+      );
+      this.notificationLog.record({
+        channel: 'SMS',
+        target: payload.targetName,
+        summary: `${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}`,
+        status: 'SENT',
+      });
+      return { sent: true };
+    } catch (err) {
+      this.notificationLog.record({
+        channel: 'SMS',
         target: payload.targetName,
         summary: `${payload.hotelName} ${payload.roomLabel} - ${payload.itemName}`,
         status: 'FAILED',

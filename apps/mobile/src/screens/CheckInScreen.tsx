@@ -110,6 +110,11 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
         inspector_name: selectedInspector?.name ?? null,
         service_type: serviceType,
         inspector_opinion: null,
+        room_type: null,
+        cleaning_team: null,
+        cleaning_completed_at: null,
+        lost_item_found: 0,
+        lost_item_location: null,
       });
       await insertItems(
         ROOM_PRO_ITEMS.map((def) => ({
@@ -126,6 +131,7 @@ export function CheckInScreen({ onCheckedIn, onCancel }: Props) {
           problem_description: null,
           action_description: null,
           requires_hotel_approval: 0,
+          issue_type: null,
         })),
       );
 

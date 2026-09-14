@@ -103,24 +103,28 @@
 
 검증: `apps/api` `npm run build`/`npm run test:e2e`(8/8 통과)/실제 서버 기동 후 curl로 sync→승인 티켓 생성→코멘트와 함께 승인→리포트/승인페이지 렌더링 전체 플로우 확인, `apps/mobile` `npx tsc --noEmit` 클린, `apps/admin-web` `npm run build`/`npx eslint src` 클린.
 
-### 우선순위 B — 운영/관리 고도화
-- [ ] 객실 유형 기록
-- [ ] 청소 담당팀 기록
-- [ ] 청소 완료시간 기록
-- [ ] 분실물 발견 여부 및 보관 장소 기록
-- [ ] 담당자별 점검 실적
-- [ ] 호텔별 문제 발생 순위
-- [ ] 객실별 문제 발생 횟수
-- [ ] 반복 문제 객실/재발 횟수
-- [ ] 전월 대비 개선율
-- [ ] 화장실 상태 변화 그래프
-- [ ] 청소팀별 인스펙션 점수
-- [ ] 날짜별 사진 비교
-- [ ] 긴급출동/재점검 일정 타입
-- [ ] 호텔 담당자와 일정 공유
+### 우선순위 B — 운영/관리 고도화 (구현 완료)
+- [x] 객실 유형 기록 — 체크인 시 선택한 값을 승계, `RoomInspectionScreen`에 객실 유형 칩 선택 UI, SQLite `sessions.room_type`, Prisma `InspectionSession.roomType`, 리포트 HTML/PDF 헤더에 표시
+- [x] 청소 담당팀 기록 — 신규 `CleaningTeamsStore`/`GET,POST /cleaning-teams`(A/B/C팀 시드), 모바일에서 팀 목록 조회 후 칩 선택, SQLite `sessions.cleaning_team`, 리포트 반영, 관리자 웹 청소팀별 인스펙션 점수 통계와 연결
+- [x] 청소 완료시간 기록 — 청소 완료 토글 시 타임스탬프 저장(`sessions.cleaning_completed_at`), 리포트 HTML/PDF에 청소팀/완료시간 블록 표시
+- [x] 분실물 발견 여부 및 보관 장소 기록 — `sessions.lost_item_found`(boolean)/`lost_item_location`, 리포트에 🎒 강조 박스로 표시, sync 시 SQLite 0/1 → boolean 변환 처리
+- [x] 담당자별 점검 실적 — `GET /admin/stats/dashboard`의 `byInspector`(세션 수/불량 수/긴급 수/불량률), 관리자 웹 대시보드 "담당자별 점검 실적" 섹션
+- [x] 호텔별 문제 발생 순위 — `byHotel`을 불량률 기준 내림차순 정렬 + `rank` 부여, 대시보드 "호텔별 문제 발생 순위" 랭크 배지
+- [x] 객실별 문제 발생 횟수 — `byRoom`(호텔+객실 그룹, 불량 건수 내림차순), 대시보드 표시
+- [x] 반복 문제 객실/재발 횟수 — `recurringIssues`(호텔+객실+항목명 그룹, count≥2), 대시보드 "반복 문제 객실" 섹션
+- [x] 전월 대비 개선율 — `improvementRatePercent`(이번 달 vs 지난 달 불량률 비교, 데이터 부족 시 null), 대시보드 StatCard
+- [x] 화장실 상태 변화 그래프 — `bathProTrend`(BATH PRO 세션 14일 일별 정상/주의/긴급 집계), 신규 순수 SVG `StackedBarChart` 컴포넌트로 시각화
+- [x] 청소팀별 인스펙션 점수 — `byCleaningTeam`(UNSET/NOT_APPLICABLE 제외 정상 비율 점수화), 대시보드 표시
+- [x] 날짜별 사진 비교 — 관리자 웹 객실 타임라인에 임의의 두 시점 사진을 선택하는 select 2개 추가, `BeforeAfterSlider` 재사용(동영상 선택 시 안내 문구로 대체)
+- [x] 긴급출동/재점검 일정 타입 — `Schedule.scheduleType`(REGULAR/EMERGENCY/REINSPECTION/INITIAL_RENEWAL), EMERGENCY/REINSPECTION은 1일 간격으로 생성, 일정 관리 페이지에 유형 선택/배지 표시
+- [x] 호텔 담당자와 일정 공유 — `POST /schedules/:id/share-link`(토큰 발급) + `GET /schedules/shared/:token`(공개 조회), 일정 관리 페이지 "🔗 호텔과 공유" 버튼으로 링크 클립보드 복사
 
-### 우선순위 C — 비용/인프라 영향 큰 후순위
-- [ ] 짧은 동영상 등록
-- [ ] SMS 문자 알림
-- [ ] PDF 공유 UX
-- [ ] 요금 관리
+검증: `apps/api` `npm run build`/`npx vitest run --config vitest.config.e2e.ts`(8/8 통과)/실제 서버 기동 후 curl로 cleaning-teams·schedule 공유·stats dashboard 전체 필드 확인, `apps/mobile` `npx tsc --noEmit` 클린, `apps/admin-web` `npm run build`/`npx eslint src` 클린.
+
+### 우선순위 C — 비용/인프라 영향 큰 후순위 (구현 완료)
+- [x] 짧은 동영상 등록 — BATH PRO 화면에 "🎥 동영상" 버튼(`launchCameraAsync`, 최대 15초), `Media.mediaKind = IMAGE/VIDEO`, 백엔드는 video mimetype일 경우 sharp 워터마크 합성을 건너뛰고 원본 바이트 저장, 업로드 파이프라인(`mediaSync.ts`)의 mimetype/확장자 하드코딩 버그도 함께 수정
+- [x] SMS 문자 알림 — `NotificationsService.sendSms()`(Mock, `sendAlimtalk`와 동일 패턴) 추가, URGENT 항목 발생 시 알림톡과 SMS를 함께 발송하고 `NotificationLogStore`에 채널 구분 기록
+- [x] PDF 공유 UX — `GET /inspections/:id/share`가 PDF/웹 절대 URL과 공유 텍스트를 반환, 관리자 웹 객실 타임라인에 "📄 PDF 공유" 버튼으로 클립보드 복사
+- [x] 요금 관리 — Prisma `ServiceRate` 모델(호텔별 override 지원), `RatesStore`(서비스 유형별 기본 요금 4종 시드) + `admin/rates` CRUD API, 관리자 웹 신규 `/rates` 페이지(기본 요금/호텔별 요금 관리 + 청소 담당팀 등록 폼), 사이드바/모바일 내비게이션에 진입점 추가
+
+검증: `apps/api` `npm run build`/`npx vitest run --config vitest.config.e2e.ts`(8/8 통과)/실제 서버 기동 후 curl로 동영상 업로드(`mediaKind: "VIDEO"`)·SMS+알림톡 동시 발송·rates CRUD 확인, `apps/mobile` `npx tsc --noEmit` 클린, `apps/admin-web` `npm run build`/`npx eslint src` 클린.

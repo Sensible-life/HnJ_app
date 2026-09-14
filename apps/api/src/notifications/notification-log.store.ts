@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 export interface NotificationLogEntry {
   id: string;
-  channel: 'ALIMTALK' | 'PUSH';
+  channel: 'ALIMTALK' | 'PUSH' | 'SMS';
   target: string;
   summary: string;
   status: 'SENT' | 'FAILED';

@@ -33,6 +33,7 @@ export function renderReportHtml(session: ReportSessionInput, items: ReportItemI
       const c = STATE_COLOR[item.state] ?? STATE_COLOR.UNSET;
       const detailLines = [
         item.comment ? `메모: ${item.comment}` : '',
+        item.issue_type ? `유형: ${item.issue_type}` : '',
         item.problem_description ? `문제 내용: ${item.problem_description}` : '',
         item.action_description ? `조치 내용: ${item.action_description}` : '',
       ].filter(Boolean);
@@ -67,7 +68,23 @@ export function renderReportHtml(session: ReportSessionInput, items: ReportItemI
       ${session.completed_at ? new Date(session.completed_at).toLocaleString('ko-KR') : ''}
       ${session.inspector_name ? ` · ${session.inspector_name}` : ''}
       ${session.service_type ? ` · ${SERVICE_TYPE_LABEL[session.service_type] ?? session.service_type}` : ''}
+      ${session.room_type ? ` · ${session.room_type}` : ''}
     </div>
+    ${
+      session.cleaning_team || session.cleaning_completed_at
+        ? `<div style="font-size:12px;color:#8A8F98;margin-top:2px;">
+            ${session.cleaning_team ? `청소팀: ${session.cleaning_team}` : ''}
+            ${session.cleaning_completed_at ? ` · 청소 완료: ${new Date(session.cleaning_completed_at).toLocaleString('ko-KR')}` : ''}
+          </div>`
+        : ''
+    }
+    ${
+      session.lost_item_found
+        ? `<div style="margin-top:8px;background:#FEF3C7;border-radius:12px;padding:8px 14px;font-size:12px;color:#B45309;">
+            🎒 분실물 발견${session.lost_item_location ? ` · 보관장소: ${session.lost_item_location}` : ''}
+          </div>`
+        : ''
+    }
     ${
       session.inspector_opinion
         ? `<div style="margin-top:12px;background:#EAF2FF;border-radius:16px;padding:12px 16px;font-size:13px;color:#111827;">

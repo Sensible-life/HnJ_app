@@ -24,3 +24,15 @@ export async function fetchInspectors(): Promise<ApiUser[]> {
   const users: ApiUser[] = await res.json();
   return users.filter((u) => u.role === "INSPECTOR");
 }
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 청소 담당팀 선택
+export interface ApiCleaningTeam {
+  id: string;
+  name: string;
+}
+
+export async function fetchCleaningTeams(): Promise<ApiCleaningTeam[]> {
+  const res = await fetch(`${API_BASE_URL}/cleaning-teams`);
+  if (!res.ok) throw new Error(`cleaning-teams fetch failed: ${res.status}`);
+  return res.json();
+}

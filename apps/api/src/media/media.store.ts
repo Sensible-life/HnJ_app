@@ -7,6 +7,8 @@ export interface MediaRecord {
   itemId?: string;
   itemName?: string;
   mediaType: 'BEFORE' | 'AFTER' | 'GENERAL';
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록
+  mediaKind: 'IMAGE' | 'VIDEO';
   hotelName: string;
   roomLabel: string;
   capturedAt: string;

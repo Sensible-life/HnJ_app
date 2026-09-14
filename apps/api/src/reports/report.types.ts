@@ -10,6 +10,8 @@ export interface ReportItemInput {
   problem_description?: string | null;
   action_description?: string | null;
   requires_hotel_approval?: boolean;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 곰팡이/누수/악취 등 문제 유형별 통계
+  issue_type?: string | null;
 }
 
 export interface ReportSessionInput {
@@ -23,4 +25,10 @@ export interface ReportSessionInput {
   // FR: docs/FEATURE_SCOPE.md 우선순위 A — 서비스 구분, 담당자 의견
   service_type?: 'INITIAL_RENEWAL' | 'REGULAR' | 'EMERGENCY' | 'REINSPECTION';
   inspector_opinion?: string | null;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물
+  room_type?: string | null;
+  cleaning_team?: string | null;
+  cleaning_completed_at?: string | null;
+  lost_item_found?: boolean;
+  lost_item_location?: string | null;
 }

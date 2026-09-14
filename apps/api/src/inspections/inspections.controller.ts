@@ -67,6 +67,16 @@ export class InspectionsController {
         itemName: item.item_name,
         actionUrl,
       });
+      // FR: docs/FEATURE_SCOPE.md 우선순위 C — 긴급 항목은 알림톡에 더해 SMS 문자로도 발송
+      if (item.state === 'URGENT') {
+        await this.notifications.sendSms({
+          targetName: '호텔 담당자',
+          hotelName: session.hotel_name,
+          roomLabel: session.room_label,
+          itemName: item.item_name,
+          actionUrl,
+        });
+      }
       tickets.push({ token, actionUrl });
     }
 
@@ -92,5 +102,20 @@ export class InspectionsController {
   @Get(':id')
   detail(@Param('id') id: string) {
     return this.inspectionsStore.get(id);
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — PDF 공유 UX.
+  // 실제 카카오톡/문자 공유 SDK 연동 전까지, 공유 가능한 절대경로 링크와 공유 문구를 만들어준다.
+  @Get(':id/share')
+  share(@Param('id') id: string, @Req() req: Request) {
+    const record = this.inspectionsStore.get(id);
+    if (!record) return null;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const pdfUrl = record.reportPdfUrl ? `${baseUrl}${record.reportPdfUrl}` : null;
+    const webUrl = record.reportWebUrl ? `${baseUrl}${record.reportWebUrl}` : null;
+    const shareText = `[BATH PRO/ROOM PRO] ${record.session.hotel_name} ${record.session.room_label} 점검 리포트${
+      webUrl ? `\n${webUrl}` : ''
+    }`;
+    return { pdfUrl, webUrl, shareText };
   }
 }

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/schedule", label: "일정" },
   { href: "/users", label: "사용자" },
   { href: "/rooms", label: "타임라인" },
+  { href: "/rates", label: "요금" },
 ];
 
 export function MobileNav() {

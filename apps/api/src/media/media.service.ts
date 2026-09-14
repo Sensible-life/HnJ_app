@@ -13,6 +13,8 @@ export interface WatermarkMeta {
   itemId?: string;
   itemName?: string;
   mediaType?: 'BEFORE' | 'AFTER' | 'GENERAL';
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록. mimetype으로 이미지/동영상 분기.
+  mimetype?: string;
 }
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
@@ -47,21 +49,33 @@ export class MediaService {
   async saveWithWatermark(buffer: Buffer, meta: WatermarkMeta): Promise<{ id: string; url: string }> {
     await this.ensureUploadDir();
 
-    const image = sharp(buffer).rotate(); // EXIF orientation 보정
-    const metadata = await image.metadata();
-    const width = metadata.width ?? 1080;
-    const watermarkSvg = Buffer.from(this.buildWatermarkSvg(meta, width));
-
+    const isVideo = Boolean(meta.mimetype && meta.mimetype.startsWith('video/'));
     const id = randomUUID();
-    const filename = `${id}.jpg`;
-    const outputBuffer = await image
-      .composite([{ input: watermarkSvg, gravity: 'south' }])
-      .jpeg({ quality: 82 })
-      .toBuffer();
+    let url: string;
 
-    await writeFile(join(UPLOAD_DIR, filename), outputBuffer);
+    if (isVideo) {
+      // 동영상은 sharp(이미지 전용)로 워터마크 합성이 불가능하다.
+      // 워터마크 없이 원본을 저장하고, 객실번호/촬영시간은 목록에서 별도 표시한다.
+      const ext = meta.mimetype?.split('/')[1]?.split(';')[0] || 'mp4';
+      const filename = `${id}.${ext}`;
+      await writeFile(join(UPLOAD_DIR, filename), buffer);
+      url = `/uploads/${filename}`;
+    } else {
+      const image = sharp(buffer).rotate(); // EXIF orientation 보정
+      const metadata = await image.metadata();
+      const width = metadata.width ?? 1080;
+      const watermarkSvg = Buffer.from(this.buildWatermarkSvg(meta, width));
 
-    const url = `/uploads/${filename}`;
+      const filename = `${id}.jpg`;
+      const outputBuffer = await image
+        .composite([{ input: watermarkSvg, gravity: 'south' }])
+        .jpeg({ quality: 82 })
+        .toBuffer();
+
+      await writeFile(join(UPLOAD_DIR, filename), outputBuffer);
+      url = `/uploads/${filename}`;
+    }
+
     this.mediaStore.add({
       id,
       url,
@@ -69,6 +83,7 @@ export class MediaService {
       itemId: meta.itemId,
       itemName: meta.itemName,
       mediaType: meta.mediaType ?? 'GENERAL',
+      mediaKind: isVideo ? 'VIDEO' : 'IMAGE',
       hotelName: meta.hotelName,
       roomLabel: meta.roomLabel,
       capturedAt: meta.capturedAt,

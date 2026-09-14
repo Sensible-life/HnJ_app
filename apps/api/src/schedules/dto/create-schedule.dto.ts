@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class CreateScheduleDto {
   @IsString()
@@ -15,4 +15,9 @@ export class CreateScheduleDto {
   @IsOptional()
   @IsString()
   startDate?: string;
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 긴급출동/재점검 일정 타입
+  @IsOptional()
+  @IsIn(['INITIAL_RENEWAL', 'REGULAR', 'EMERGENCY', 'REINSPECTION'])
+  scheduleType?: 'INITIAL_RENEWAL' | 'REGULAR' | 'EMERGENCY' | 'REINSPECTION';
 }

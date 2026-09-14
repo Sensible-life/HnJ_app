@@ -51,6 +51,15 @@ enum MediaType {
   GENERAL
 }
 
+// FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 문제 유형별 통계(곰팡이/누수/악취 등)는
+// InspectionItem.issueType(자유 텍스트/코드)으로 근사한다.
+
 enum TicketStatus {
   PENDING
   APPROVED
@@ -87,13 +96,14 @@ model User {
 }
 
 model Hotel {
-  id        String             @id @default(uuid())
-  name      String
-  address   String
-  region    String?
-  rooms     Room[]
-  schedules Schedule[]
-  managers  UserHotelMapping[]
+  id           String             @id @default(uuid())
+  name         String
+  address      String
+  region       String?
+  rooms        Room[]
+  schedules    Schedule[]
+  managers     UserHotelMapping[]
+  serviceRates ServiceRate[]
 
   @@map("hotels")
 }
@@ -124,20 +134,26 @@ model Room {
 }
 
 model InspectionSession {
-  id               String              @id @default(uuid())
-  roomId           String
-  inspectorId      String
-  parentSessionId  String?
-  type             SessionType
-  status           SessionStatus       @default(IN_PROGRESS)
-  serviceType      ServiceType?        @default(REGULAR)
-  checkinMethod    CheckinMethod
-  gpsLat           Float?
-  gpsLng           Float?
-  clientUuid       String?             @unique
-  startedAt        DateTime            @default(now())
-  completedAt      DateTime?
-  inspectorOpinion String?             // 담당자 의견 (점검 완료 시 입력)
+  id                   String              @id @default(uuid())
+  roomId               String
+  inspectorId          String
+  parentSessionId      String?
+  type                 SessionType
+  status               SessionStatus       @default(IN_PROGRESS)
+  serviceType          ServiceType?        @default(REGULAR)
+  checkinMethod        CheckinMethod
+  gpsLat               Float?
+  gpsLng               Float?
+  clientUuid           String?             @unique
+  startedAt            DateTime            @default(now())
+  completedAt          DateTime?
+  inspectorOpinion     String?             // 담당자 의견 (점검 완료 시 입력)
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물
+  roomType             String?
+  cleaningTeam         String?
+  cleaningCompletedAt  DateTime?
+  lostItemFound        Boolean             @default(false)
+  lostItemLocation     String?
   room             Room                @relation(fields: [roomId], references: [id])
   inspector        User                @relation(fields: [inspectorId], references: [id])
   parentSession    InspectionSession?  @relation("SessionLink", fields: [parentSessionId], references: [id])
@@ -159,6 +175,7 @@ model InspectionItem {
   problemDescription    String?           // 문제 내용
   actionDescription     String?           // 조치 내용
   requiresHotelApproval Boolean           @default(false) // 호텔 승인 필요 여부
+  issueType             String?           // 곰팡이/누수/악취 등 문제 유형 (우선순위 B 통계용)
   session    InspectionSession @relation(fields: [sessionId], references: [id])
   media      Media[]
   tickets    IssueTicket[]
@@ -171,6 +188,7 @@ model Media {
   itemId         String
   url            String
   mediaType      MediaType
+  mediaKind      MediaKind      @default(IMAGE) // FR: 우선순위 C — 짧은 동영상 등록
   watermarkMeta  Json?
   markingData    Json?
   uploadedAt     DateTime       @default(now())
@@ -223,14 +241,40 @@ model Notification {
 }
 
 model Schedule {
-  id              String    @id @default(uuid())
+  id              String       @id @default(uuid())
   hotelId         String
   assignedUserId  String
-  visitsPerMonth  Int       @default(2)
+  visitsPerMonth  Int          @default(2)
   nextVisitDate   DateTime?
   lastVisitDate   DateTime?
-  hotel           Hotel     @relation(fields: [hotelId], references: [id])
-  assignedUser    User      @relation(fields: [assignedUserId], references: [id])
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 긴급출동/재점검 일정 타입, 호텔 담당자와 일정 공유
+  scheduleType    ServiceType? @default(REGULAR)
+  shareToken      String?      @unique
+  hotel           Hotel        @relation(fields: [hotelId], references: [id])
+  assignedUser    User         @relation(fields: [assignedUserId], references: [id])
 
   @@map("schedules")
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 청소팀별 인스펙션 점수 집계를 위한 청소팀 마스터
+model CleaningTeam {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  @@map("cleaning_teams")
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 C — 요금 관리 (호텔앤잡 관리자 권한)
+model ServiceRate {
+  id          String       @id @default(uuid())
+  hotelId     String?
+  serviceType ServiceType
+  price       Int
+  unit        String       @default("건")
+  note        String?
+  updatedAt   DateTime     @updatedAt
+  hotel       Hotel?       @relation(fields: [hotelId], references: [id])
+
+  @@map("service_rates")
 }

@@ -9,7 +9,9 @@ import {
   getItemsForSession,
   updateItemState,
   updateItemProblemInfo,
+  updateItemIssueType,
   updateSessionOpinion,
+  updateSessionOperationsInfo,
   completeSession,
   insertMedia,
   createSession,
@@ -23,6 +25,12 @@ import { BathProInspectionScreen } from "./BathProInspectionScreen";
 import { BATH_PRO_ITEMS } from "../data/inspectionItems";
 import { syncPendingSessions } from "../lib/sync";
 import { uploadPendingMedia } from "../lib/mediaSync";
+import { fetchCleaningTeams, ApiCleaningTeam } from "../lib/api";
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 곰팡이/누수/악취 등 문제 유형별 통계
+const ISSUE_TYPES = ["곰팡이", "누수", "악취", "파손", "기타"];
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형 기록
+const ROOM_TYPES = ["스탠다드 더블", "스탠다드 트윈", "디럭스", "스위트"];
 
 type Props = {
   sessionId: string;
@@ -41,18 +49,36 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
   const [bathSheetVisible, setBathSheetVisible] = useState(false);
   const [bathSession, setBathSession] = useState<{ id: string } | null>(null);
 
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물
+  const [cleaningTeams, setCleaningTeams] = useState<ApiCleaningTeam[]>([]);
+  const [roomType, setRoomType] = useState<string | null>(null);
+  const [cleaningTeam, setCleaningTeam] = useState<string | null>(null);
+  const [cleaningCompletedAt, setCleaningCompletedAt] = useState<string | null>(null);
+  const [lostItemFound, setLostItemFound] = useState(false);
+  const [lostItemLocation, setLostItemLocation] = useState("");
+
   const load = useCallback(async () => {
     const [rows, sessionRow] = await Promise.all([getItemsForSession(sessionId), getSession(sessionId)]);
     setItems(rows);
     if (sessionRow) {
       setSession(sessionRow);
       setOpinion((prev) => prev || sessionRow.inspector_opinion || "");
+      setRoomType((prev) => prev ?? sessionRow.room_type);
+      setCleaningTeam((prev) => prev ?? sessionRow.cleaning_team);
+      setCleaningCompletedAt((prev) => prev ?? sessionRow.cleaning_completed_at);
+      setLostItemFound((prev) => prev || sessionRow.lost_item_found === 1);
+      setLostItemLocation((prev) => prev || sessionRow.lost_item_location || "");
     }
     setLoading(false);
   }, [sessionId]);
 
   useEffect(() => {
     load();
+    fetchCleaningTeams()
+      .then(setCleaningTeams)
+      .catch(() => {
+        // 서버 미접속 시에도 점검 자체는 계속 진행 가능해야 하므로 조용히 무시
+      });
   }, [load]);
 
   const completedCount = items.filter((i) => i.state !== "UNSET").length;
@@ -77,6 +103,7 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
         session_id: sessionId,
         local_uri: asset.uri,
         media_type: "GENERAL",
+        media_kind: "IMAGE",
         hotel_name: hotelName,
         room_label: roomLabel,
         captured_at: new Date().toISOString(),
@@ -112,6 +139,11 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
       inspector_name: session?.inspector_name ?? null,
       service_type: session?.service_type ?? null,
       inspector_opinion: null,
+      room_type: session?.room_type ?? null,
+      cleaning_team: session?.cleaning_team ?? null,
+      cleaning_completed_at: null,
+      lost_item_found: 0,
+      lost_item_location: null,
     });
     await insertItems(
       BATH_PRO_ITEMS.map((def) => ({
@@ -128,17 +160,28 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
         problem_description: null,
         action_description: null,
         requires_hotel_approval: 0,
+        issue_type: null,
       })),
     );
     setBathSheetVisible(false);
     setBathSession({ id: bathSessionId });
   }
 
-  // FR: docs/FEATURE_SCOPE.md 우선순위 A — 문제 내용/조치 내용/호텔 승인 필요 여부
+  // FR: docs/FEATURE_SCOPE.md 우선순위 A/B — 문제 내용/조치 내용/호텔 승인 필요 여부/문제 유형
   async function handleProblemInfoChange(
     item: LocalItem,
-    patch: Partial<{ problem_description: string | null; action_description: string | null; requires_hotel_approval: number }>,
+    patch: Partial<{
+      problem_description: string | null;
+      action_description: string | null;
+      requires_hotel_approval: number;
+      issue_type: string | null;
+    }>,
   ) {
+    if (patch.issue_type !== undefined) {
+      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, issue_type: patch.issue_type! } : it)));
+      await updateItemIssueType(item.id, patch.issue_type);
+      return;
+    }
     const next = {
       problemDescription: patch.problem_description !== undefined ? patch.problem_description : item.problem_description,
       actionDescription: patch.action_description !== undefined ? patch.action_description : item.action_description,
@@ -163,6 +206,59 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
   function handleOpinionChange(text: string) {
     setOpinion(text);
     updateSessionOpinion(sessionId, text || null);
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물 저장
+  function persistOperationsInfo(patch: {
+    roomType?: string | null;
+    cleaningTeam?: string | null;
+    cleaningCompletedAt?: string | null;
+    lostItemFound?: boolean;
+    lostItemLocation?: string;
+  }) {
+    const next = {
+      roomType: patch.roomType !== undefined ? patch.roomType : roomType,
+      cleaningTeam: patch.cleaningTeam !== undefined ? patch.cleaningTeam : cleaningTeam,
+      cleaningCompletedAt: patch.cleaningCompletedAt !== undefined ? patch.cleaningCompletedAt : cleaningCompletedAt,
+      lostItemFound: patch.lostItemFound !== undefined ? patch.lostItemFound : lostItemFound,
+      lostItemLocation: patch.lostItemLocation !== undefined ? patch.lostItemLocation : lostItemLocation,
+    };
+    updateSessionOperationsInfo(sessionId, {
+      roomType: next.roomType,
+      cleaningTeam: next.cleaningTeam,
+      cleaningCompletedAt: next.cleaningCompletedAt,
+      lostItemFound: next.lostItemFound,
+      lostItemLocation: next.lostItemLocation || null,
+    });
+  }
+
+  function handleRoomTypeSelect(t: string) {
+    const next = roomType === t ? null : t;
+    setRoomType(next);
+    persistOperationsInfo({ roomType: next });
+  }
+
+  function handleCleaningTeamSelect(name: string) {
+    const next = cleaningTeam === name ? null : name;
+    setCleaningTeam(next);
+    persistOperationsInfo({ cleaningTeam: next });
+  }
+
+  function handleToggleCleaningCompleted() {
+    const next = cleaningCompletedAt ? null : new Date().toISOString();
+    setCleaningCompletedAt(next);
+    persistOperationsInfo({ cleaningCompletedAt: next });
+  }
+
+  function handleToggleLostItem() {
+    const next = !lostItemFound;
+    setLostItemFound(next);
+    persistOperationsInfo({ lostItemFound: next });
+  }
+
+  function handleLostItemLocationChange(text: string) {
+    setLostItemLocation(text);
+    persistOperationsInfo({ lostItemLocation: text });
   }
 
   async function handleSaveDraft() {
@@ -238,6 +334,26 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
 
               {needsProblemInfo && (
                 <View style={styles.problemBlock}>
+                  <Text style={styles.problemLabel}>문제 유형</Text>
+                  <View style={styles.issueTypeRow}>
+                    {ISSUE_TYPES.map((t) => (
+                      <TouchableOpacity
+                        key={t}
+                        style={[styles.issueTypeChip, item.issue_type === t && styles.issueTypeChipActive]}
+                        onPress={() => handleProblemInfoChange(item, { issue_type: item.issue_type === t ? null : t })}
+                      >
+                        <Text
+                          style={[
+                            styles.issueTypeChipText,
+                            item.issue_type === t && styles.issueTypeChipTextActive,
+                          ]}
+                        >
+                          {t}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
                   <Text style={styles.problemLabel}>문제 내용</Text>
                   <TextInput
                     style={styles.input}
@@ -280,6 +396,69 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
         })}
 
         <View style={styles.opinionBlock}>
+          <Text style={styles.problemLabel}>객실 유형</Text>
+          <View style={styles.issueTypeRow}>
+            {ROOM_TYPES.map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.issueTypeChip, roomType === t && styles.issueTypeChipActive]}
+                onPress={() => handleRoomTypeSelect(t)}
+              >
+                <Text style={[styles.issueTypeChipText, roomType === t && styles.issueTypeChipTextActive]}>{t}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {cleaningTeams.length > 0 && (
+            <>
+              <Text style={styles.problemLabel}>청소 담당팀</Text>
+              <View style={styles.issueTypeRow}>
+                {cleaningTeams.map((team) => (
+                  <TouchableOpacity
+                    key={team.id}
+                    style={[styles.issueTypeChip, cleaningTeam === team.name && styles.issueTypeChipActive]}
+                    onPress={() => handleCleaningTeamSelect(team.name)}
+                  >
+                    <Text
+                      style={[styles.issueTypeChipText, cleaningTeam === team.name && styles.issueTypeChipTextActive]}
+                    >
+                      {team.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
+
+          <TouchableOpacity
+            style={[styles.approvalToggle, cleaningCompletedAt && styles.approvalToggleActive]}
+            onPress={handleToggleCleaningCompleted}
+          >
+            <Text style={[styles.approvalToggleText, cleaningCompletedAt && styles.approvalToggleTextActive]}>
+              {cleaningCompletedAt
+                ? `✓ 청소 완료 (${new Date(cleaningCompletedAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })})`
+                : "청소 완료로 표시"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.approvalToggle, lostItemFound && styles.approvalToggleActive]}
+            onPress={handleToggleLostItem}
+          >
+            <Text style={[styles.approvalToggleText, lostItemFound && styles.approvalToggleTextActive]}>
+              {lostItemFound ? "✓ 분실물 발견됨" : "분실물 발견 시 표시"}
+            </Text>
+          </TouchableOpacity>
+          {lostItemFound && (
+            <TextInput
+              style={styles.input}
+              placeholder="보관 장소 (예: 프론트 보관함)"
+              placeholderTextColor={colors.textSecondary}
+              value={lostItemLocation}
+              onChangeText={handleLostItemLocationChange}
+            />
+          )}
+
           <Text style={styles.problemLabel}>담당자 의견 (선택)</Text>
           <TextInput
             style={[styles.input, styles.opinionInput]}
@@ -366,6 +545,16 @@ const styles = StyleSheet.create({
   approvalToggleActive: { backgroundColor: colors.statusUrgentBg },
   approvalToggleText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
   approvalToggleTextActive: { color: colors.statusUrgent },
+  issueTypeRow: { flexDirection: "row", flexWrap: "wrap", gap: moderateScale(6) },
+  issueTypeChip: {
+    paddingVertical: moderateScale(6),
+    paddingHorizontal: moderateScale(12),
+    borderRadius: radius.pill,
+    backgroundColor: colors.backgroundSubtle,
+  },
+  issueTypeChipActive: { backgroundColor: colors.primary },
+  issueTypeChipText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
+  issueTypeChipTextActive: { color: "#FFFFFF" },
   opinionBlock: { marginBottom: spacing.md },
   opinionInput: { minHeight: moderateScale(80), textAlignVertical: "top" },
   bottomBar: {

@@ -19,6 +19,7 @@ import {
   updateItemState,
   updateItemRepairInfo,
   updateItemProblemInfo,
+  updateItemIssueType,
   updateSessionOpinion,
   completeSession,
   insertMedia,
@@ -44,6 +45,9 @@ const PHOTO_STAGES: { key: "BEFORE" | "GENERAL" | "AFTER"; label: string }[] = [
   { key: "GENERAL", label: "작업 중" },
   { key: "AFTER", label: "작업 후" },
 ];
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 곰팡이/누수/악취 등 문제 유형별 통계
+const ISSUE_TYPES = ["곰팡이", "누수", "악취", "파손", "기타"];
 
 export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDone }: Props) {
   const insets = useSafeAreaInsets();
@@ -90,6 +94,37 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
       session_id: sessionId,
       local_uri: asset.uri,
       media_type: stage,
+      media_kind: "IMAGE",
+      hotel_name: hotelName,
+      room_label: roomLabel,
+      captured_at: new Date().toISOString(),
+    });
+    const newPhotoCount = item.photo_count + 1;
+    await updateItemState(item.id, item.state, newPhotoCount);
+    await load();
+  }
+
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록
+  async function handleCaptureVideo(item: LocalItem) {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("카메라 권한 필요", "증빙 동영상 촬영을 위해 카메라 권한이 필요합니다.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      videoMaxDuration: 15,
+      quality: 0.6,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    await insertMedia({
+      id: `media_${Date.now()}`,
+      item_id: item.id,
+      session_id: sessionId,
+      local_uri: asset.uri,
+      media_type: "GENERAL",
+      media_kind: "VIDEO",
       hotel_name: hotelName,
       room_label: roomLabel,
       captured_at: new Date().toISOString(),
@@ -125,11 +160,21 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
     await updateItemRepairInfo(item.id, next);
   }
 
-  // FR: docs/FEATURE_SCOPE.md 우선순위 A — 문제 내용/조치 내용/호텔 승인 필요 여부
+  // FR: docs/FEATURE_SCOPE.md 우선순위 A/B — 문제 내용/조치 내용/호텔 승인 필요 여부/문제 유형
   async function handleProblemInfoChange(
     item: LocalItem,
-    patch: Partial<{ problem_description: string | null; action_description: string | null; requires_hotel_approval: number }>,
+    patch: Partial<{
+      problem_description: string | null;
+      action_description: string | null;
+      requires_hotel_approval: number;
+      issue_type: string | null;
+    }>,
   ) {
+    if (patch.issue_type !== undefined) {
+      setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, issue_type: patch.issue_type! } : it)));
+      await updateItemIssueType(item.id, patch.issue_type);
+      return;
+    }
     const next = {
       problemDescription: patch.problem_description !== undefined ? patch.problem_description : item.problem_description,
       actionDescription: patch.action_description !== undefined ? patch.action_description : item.action_description,
@@ -223,10 +268,33 @@ export function BathProInspectionScreen({ sessionId, roomLabel, hotelName, onDon
                         <Text style={styles.photoButtonText}>📷 {stage.label}</Text>
                       </TouchableOpacity>
                     ))}
+                    <TouchableOpacity style={styles.photoButton} onPress={() => handleCaptureVideo(item)}>
+                      <Text style={styles.photoButtonText}>🎥 동영상</Text>
+                    </TouchableOpacity>
                   </View>
                   {item.photo_count > 0 && (
-                    <Text style={styles.photoHint}>사진 {item.photo_count}장 등록됨</Text>
+                    <Text style={styles.photoHint}>증빙 자료 {item.photo_count}건 등록됨</Text>
                   )}
+
+                  <Text style={styles.repairLabel}>문제 유형</Text>
+                  <View style={styles.issueTypeRow}>
+                    {ISSUE_TYPES.map((t) => (
+                      <TouchableOpacity
+                        key={t}
+                        style={[styles.issueTypeChip, item.issue_type === t && styles.issueTypeChipActive]}
+                        onPress={() => handleProblemInfoChange(item, { issue_type: item.issue_type === t ? null : t })}
+                      >
+                        <Text
+                          style={[
+                            styles.issueTypeChipText,
+                            item.issue_type === t && styles.issueTypeChipTextActive,
+                          ]}
+                        >
+                          {t}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
                   <Text style={styles.repairLabel}>수리 자재</Text>
                   <TextInput
@@ -393,6 +461,16 @@ const styles = StyleSheet.create({
   approvalToggleActive: { backgroundColor: colors.statusUrgentBg },
   approvalToggleText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
   approvalToggleTextActive: { color: colors.statusUrgent },
+  issueTypeRow: { flexDirection: "row", flexWrap: "wrap", gap: moderateScale(6) },
+  issueTypeChip: {
+    paddingVertical: moderateScale(6),
+    paddingHorizontal: moderateScale(12),
+    borderRadius: radius.pill,
+    backgroundColor: colors.backgroundSubtle,
+  },
+  issueTypeChipActive: { backgroundColor: colors.primary },
+  issueTypeChipText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
+  issueTypeChipTextActive: { color: "#FFFFFF" },
   opinionBlock: { marginBottom: spacing.md },
   opinionInput: { minHeight: moderateScale(80), textAlignVertical: "top" },
   bottomBar: {

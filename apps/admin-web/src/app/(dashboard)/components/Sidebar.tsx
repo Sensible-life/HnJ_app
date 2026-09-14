@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/schedule", label: "일정 관리", icon: "◔" },
   { href: "/users", label: "사용자/권한", icon: "◎" },
   { href: "/rooms", label: "객실 타임라인", icon: "▤" },
+  { href: "/rates", label: "요금 관리", icon: "₩" },
 ];
 
 export function Sidebar() {

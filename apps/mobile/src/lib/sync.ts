@@ -33,10 +33,12 @@ export async function syncPendingSessions(): Promise<{ synced: number; failed: n
         ...item,
         requires_hotel_approval: item.requires_hotel_approval === 1,
       }));
+      // 마찬가지로 lost_item_found 도 0/1 정수 → boolean 변환
+      const payloadSession = { ...session, lost_item_found: session.lost_item_found === 1 };
       const res = await fetch(`${API_BASE_URL}/inspections/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientUuid: session.id, session, items: payloadItems }),
+        body: JSON.stringify({ clientUuid: session.id, session: payloadSession, items: payloadItems }),
       });
       if (!res.ok) throw new Error(`sync failed: ${res.status}`);
       await markSessionSynced(session.id);

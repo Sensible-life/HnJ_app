@@ -22,7 +22,12 @@ function getDb() {
           synced INTEGER NOT NULL DEFAULT 0,
           inspector_name TEXT,
           service_type TEXT,
-          inspector_opinion TEXT
+          inspector_opinion TEXT,
+          room_type TEXT,
+          cleaning_team TEXT,
+          cleaning_completed_at TEXT,
+          lost_item_found INTEGER NOT NULL DEFAULT 0,
+          lost_item_location TEXT
         );
         CREATE TABLE IF NOT EXISTS inspection_items (
           id TEXT PRIMARY KEY NOT NULL,
@@ -37,7 +42,8 @@ function getDb() {
           revisit_date TEXT,
           problem_description TEXT,
           action_description TEXT,
-          requires_hotel_approval INTEGER NOT NULL DEFAULT 0
+          requires_hotel_approval INTEGER NOT NULL DEFAULT 0,
+          issue_type TEXT
         );
         CREATE TABLE IF NOT EXISTS media (
           id TEXT PRIMARY KEY NOT NULL,
@@ -45,6 +51,7 @@ function getDb() {
           session_id TEXT NOT NULL,
           local_uri TEXT NOT NULL,
           media_type TEXT NOT NULL DEFAULT 'GENERAL',
+          media_kind TEXT NOT NULL DEFAULT 'IMAGE',
           hotel_name TEXT NOT NULL,
           room_label TEXT NOT NULL,
           captured_at TEXT NOT NULL,
@@ -77,6 +84,12 @@ export interface LocalSession {
   inspector_name: string | null;
   service_type: ServiceType | null;
   inspector_opinion: string | null;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 객실 유형/청소 담당팀·완료시간/분실물
+  room_type: string | null;
+  cleaning_team: string | null;
+  cleaning_completed_at: string | null;
+  lost_item_found: number;
+  lost_item_location: string | null;
 }
 
 export interface LocalItem {
@@ -93,6 +106,8 @@ export interface LocalItem {
   problem_description: string | null;
   action_description: string | null;
   requires_hotel_approval: number;
+  // FR: docs/FEATURE_SCOPE.md 우선순위 B — 문제 유형(곰팡이/누수/악취 등)
+  issue_type: string | null;
 }
 
 export interface LocalMedia {
@@ -101,6 +116,8 @@ export interface LocalMedia {
   session_id: string;
   local_uri: string;
   media_type: "BEFORE" | "AFTER" | "GENERAL";
+  // FR: docs/FEATURE_SCOPE.md 우선순위 C — 짧은 동영상 등록
+  media_kind: "IMAGE" | "VIDEO";
   hotel_name: string;
   room_label: string;
   captured_at: string;
@@ -111,8 +128,8 @@ export interface LocalMedia {
 export async function createSession(session: Omit<LocalSession, "synced">) {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced, inspector_name, service_type, inspector_opinion)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`,
+    `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced, inspector_name, service_type, inspector_opinion, room_type, cleaning_team, cleaning_completed_at, lost_item_found, lost_item_location)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       session.id,
       session.parent_session_id,
@@ -128,6 +145,11 @@ export async function createSession(session: Omit<LocalSession, "synced">) {
       session.inspector_name,
       session.service_type,
       session.inspector_opinion,
+      session.room_type,
+      session.cleaning_team,
+      session.cleaning_completed_at,
+      session.lost_item_found ?? 0,
+      session.lost_item_location,
     ],
   );
 }
@@ -136,8 +158,8 @@ export async function insertItems(items: LocalItem[]) {
   const db = await getDb();
   for (const item of items) {
     await db.runAsync(
-      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, repair_material, repair_cost, revisit_date, problem_description, action_description, requires_hotel_approval)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, repair_material, repair_cost, revisit_date, problem_description, action_description, requires_hotel_approval, issue_type)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         item.id,
         item.session_id,
@@ -152,6 +174,7 @@ export async function insertItems(items: LocalItem[]) {
         item.problem_description,
         item.action_description,
         item.requires_hotel_approval ?? 0,
+        item.issue_type,
       ],
     );
   }
@@ -218,6 +241,37 @@ export async function updateSessionOpinion(sessionId: string, opinion: string | 
   await db.runAsync(`UPDATE sessions SET inspector_opinion = ? WHERE id = ?`, [opinion, sessionId]);
 }
 
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 청소 완료시간/분실물 발견 여부·보관장소 (완료 전 입력)
+export async function updateSessionOperationsInfo(
+  sessionId: string,
+  info: {
+    roomType: string | null;
+    cleaningTeam: string | null;
+    cleaningCompletedAt: string | null;
+    lostItemFound: boolean;
+    lostItemLocation: string | null;
+  },
+) {
+  const db = await getDb();
+  await db.runAsync(
+    `UPDATE sessions SET room_type = ?, cleaning_team = ?, cleaning_completed_at = ?, lost_item_found = ?, lost_item_location = ? WHERE id = ?`,
+    [
+      info.roomType,
+      info.cleaningTeam,
+      info.cleaningCompletedAt,
+      info.lostItemFound ? 1 : 0,
+      info.lostItemLocation,
+      sessionId,
+    ],
+  );
+}
+
+// FR: docs/FEATURE_SCOPE.md 우선순위 B — 항목별 문제 유형(곰팡이/누수/악취 등)
+export async function updateItemIssueType(itemId: string, issueType: string | null) {
+  const db = await getDb();
+  await db.runAsync(`UPDATE inspection_items SET issue_type = ? WHERE id = ?`, [issueType, itemId]);
+}
+
 // FR-이슈트래커: 주의/긴급 항목을 세션 정보와 함께 조회 (진행중/완료/미완료 상태 추적용)
 export interface IssueItemRow extends LocalItem {
   hotel_name: string;
@@ -259,14 +313,15 @@ export async function markSessionSynced(sessionId: string) {
 export async function insertMedia(media: Omit<LocalMedia, "remote_url" | "synced">) {
   const db = await getDb();
   await db.runAsync(
-    `INSERT INTO media (id, item_id, session_id, local_uri, media_type, hotel_name, room_label, captured_at, remote_url, synced)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)`,
+    `INSERT INTO media (id, item_id, session_id, local_uri, media_type, media_kind, hotel_name, room_label, captured_at, remote_url, synced)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0)`,
     [
       media.id,
       media.item_id,
       media.session_id,
       media.local_uri,
       media.media_type,
+      media.media_kind ?? "IMAGE",
       media.hotel_name,
       media.room_label,
       media.captured_at,

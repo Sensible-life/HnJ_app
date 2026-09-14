@@ -14,6 +14,8 @@ import { UsersModule } from './users/users.module.js';
 import { SchedulesModule } from './schedules/schedules.module.js';
 import { StatsModule } from './stats/stats.module.js';
 import { LogsModule } from './logs/logs.module.js';
+import { CleaningTeamsModule } from './cleaning-teams/cleaning-teams.module.js';
+import { RatesModule } from './rates/rates.module.js';
 import { RateLimitMiddleware } from './common/middleware/rate-limit.middleware.js';
 
 // NOTE: PrismaModule / AuthModule은 여기서 잠시 제외했다.
@@ -41,6 +43,8 @@ import { RateLimitMiddleware } from './common/middleware/rate-limit.middleware.j
     SchedulesModule,
     StatsModule,
     LogsModule,
+    CleaningTeamsModule,
+    RatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
