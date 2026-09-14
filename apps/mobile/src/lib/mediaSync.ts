@@ -37,6 +37,9 @@ async function uploadOne(media: LocalMedia) {
   form.append("hotelName", media.hotel_name);
   form.append("roomLabel", media.room_label);
   form.append("capturedAt", media.captured_at);
+  form.append("sessionId", media.session_id);
+  form.append("itemId", media.item_id);
+  form.append("mediaType", media.media_type);
 
   const res = await fetch(`${API_BASE_URL}/media/upload`, {
     method: "POST",

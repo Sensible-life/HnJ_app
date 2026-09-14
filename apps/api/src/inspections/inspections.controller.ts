@@ -1,10 +1,11 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { randomUUID } from 'node:crypto';
 import { ReportsService } from '../reports/reports.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { TicketsStore } from '../tickets/tickets.store.js';
 import { ReportItemInput, ReportSessionInput } from '../reports/report.types.js';
+import { InspectionsStore } from './inspections.store.js';
 
 interface SyncBody {
   clientUuid: string;
@@ -18,6 +19,7 @@ export class InspectionsController {
     private readonly reportsService: ReportsService,
     private readonly notifications: NotificationsService,
     private readonly ticketsStore: TicketsStore,
+    private readonly inspectionsStore: InspectionsStore,
   ) {}
 
   // FR-INSP-05 오프라인 동기화 수신 + FR-REP-01/02 리포트 생성/알림 발송을 한번에 처리한다.
@@ -28,6 +30,14 @@ export class InspectionsController {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     const report = await this.reportsService.generateAndSave(session, items);
+
+    this.inspectionsStore.add({
+      session,
+      items,
+      reportWebUrl: report.webUrl,
+      reportPdfUrl: report.pdfUrl,
+      syncedAt: new Date().toISOString(),
+    });
 
     const urgentItems = items.filter((i) => i.state === 'URGENT');
     const tickets = [];
@@ -59,5 +69,21 @@ export class InspectionsController {
       ticketsCreated: tickets.length,
       tickets,
     };
+  }
+
+  // 관리자 웹 통계 대시보드 / 객실 타임라인 피드가 동기화된 세션을 조회하는 용도.
+  @Get()
+  list(@Query('hotelName') hotelName?: string, @Query('type') type?: 'ROOM_PRO' | 'BATH_PRO') {
+    return this.inspectionsStore.list({ hotelName, type });
+  }
+
+  @Get('room')
+  byRoom(@Query('hotelName') hotelName: string, @Query('roomLabel') roomLabel: string) {
+    return this.inspectionsStore.listByRoom(hotelName, roomLabel);
+  }
+
+  @Get(':id')
+  detail(@Param('id') id: string) {
+    return this.inspectionsStore.get(id);
   }
 }

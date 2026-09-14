@@ -3,17 +3,24 @@ import sharp from 'sharp';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { MediaStore } from './media.store.js';
 
 export interface WatermarkMeta {
   hotelName: string;
   roomLabel: string;
   capturedAt: string;
+  sessionId?: string;
+  itemId?: string;
+  itemName?: string;
+  mediaType?: 'BEFORE' | 'AFTER' | 'GENERAL';
 }
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 
 @Injectable()
 export class MediaService {
+  constructor(private readonly mediaStore: MediaStore) {}
+
   private async ensureUploadDir() {
     await mkdir(UPLOAD_DIR, { recursive: true });
   }
@@ -54,6 +61,19 @@ export class MediaService {
 
     await writeFile(join(UPLOAD_DIR, filename), outputBuffer);
 
-    return { id, url: `/uploads/${filename}` };
+    const url = `/uploads/${filename}`;
+    this.mediaStore.add({
+      id,
+      url,
+      sessionId: meta.sessionId,
+      itemId: meta.itemId,
+      itemName: meta.itemName,
+      mediaType: meta.mediaType ?? 'GENERAL',
+      hotelName: meta.hotelName,
+      roomLabel: meta.roomLabel,
+      capturedAt: meta.capturedAt,
+    });
+
+    return { id, url };
   }
 }
