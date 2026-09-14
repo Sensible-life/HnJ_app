@@ -472,7 +472,14 @@ const styles = StyleSheet.create({
   issueTypeChipActive: { backgroundColor: colors.primary },
   issueTypeChipText: { fontSize: font.xs, fontWeight: "600", color: colors.textSecondary },
   issueTypeChipTextActive: { color: "#FFFFFF" },
-  opinionBlock: { marginBottom: spacing.md },
+  opinionBlock: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
   opinionInput: { minHeight: moderateScale(80), textAlignVertical: "top" },
   bottomBar: {
     position: "absolute",
