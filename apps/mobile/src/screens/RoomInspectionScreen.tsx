@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   getItemsForSession,
   updateItemState,
+  updateItemRepairInfo,
   updateItemProblemInfo,
   updateItemIssueType,
   updateSessionOpinion,
@@ -203,6 +204,34 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
     await updateItemProblemInfo(item.id, next);
   }
 
+  // FR: ROOM PRO에서 생긴 문제도 BATH PRO와 동일하게 수리 자재/비용/재방문일을 입력해서
+  // "조치 완료" 상태로 넘어갈 수 있도록 한다 (이전에는 이 입력 UI가 BATH PRO 화면에만 있었음).
+  async function handleRepairInfoChange(
+    item: LocalItem,
+    field: "repair_material" | "repair_cost" | "revisit_date",
+    value: string,
+  ) {
+    const next = {
+      repairMaterial: field === "repair_material" ? value || null : item.repair_material,
+      repairCost:
+        field === "repair_cost" ? (value ? Number(value.replace(/[^0-9]/g, "")) : null) : item.repair_cost,
+      revisitDate: field === "revisit_date" ? value || null : item.revisit_date,
+    };
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === item.id
+          ? {
+              ...it,
+              repair_material: next.repairMaterial,
+              repair_cost: next.repairCost,
+              revisit_date: next.revisitDate,
+            }
+          : it,
+      ),
+    );
+    await updateItemRepairInfo(item.id, next);
+  }
+
   function handleOpinionChange(text: string) {
     setOpinion(text);
     updateSessionOpinion(sessionId, text || null);
@@ -353,6 +382,34 @@ export function RoomInspectionScreen({ sessionId, roomLabel, hotelName, onDone }
                       </TouchableOpacity>
                     ))}
                   </View>
+
+                  <Text style={styles.problemLabel}>수리 자재</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 벽지, 실리콘 코킹재"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.repair_material ?? ""}
+                    onChangeText={(v) => handleRepairInfoChange(item, "repair_material", v)}
+                  />
+
+                  <Text style={styles.problemLabel}>예상 비용 (원)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 50000"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="number-pad"
+                    value={item.repair_cost != null ? String(item.repair_cost) : ""}
+                    onChangeText={(v) => handleRepairInfoChange(item, "repair_cost", v)}
+                  />
+
+                  <Text style={styles.problemLabel}>재방문일 (YYYY-MM-DD)</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="예: 2026-09-20"
+                    placeholderTextColor={colors.textSecondary}
+                    value={item.revisit_date ?? ""}
+                    onChangeText={(v) => handleRepairInfoChange(item, "revisit_date", v)}
+                  />
 
                   <Text style={styles.problemLabel}>문제 내용</Text>
                   <TextInput
