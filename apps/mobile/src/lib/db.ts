@@ -233,6 +233,18 @@ export async function getSession(sessionId: string): Promise<LocalSession | null
   return row ?? null;
 }
 
+// FR-홈: 홈 화면 "오늘 객실" 섹션 — 오늘(로컬 자정~다음 자정) 시작된 점검 세션을 실데이터로 조회.
+export async function listTodaySessions(): Promise<LocalSession[]> {
+  const db = await getDb();
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+  return db.getAllAsync<LocalSession>(
+    `SELECT * FROM sessions WHERE started_at >= ? AND started_at < ? ORDER BY started_at DESC`,
+    [startOfDay, endOfDay],
+  );
+}
+
 export async function updateItemRepairInfo(
   itemId: string,
   info: { repairMaterial: string | null; repairCost: number | null; revisitDate: string | null },
