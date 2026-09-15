@@ -39,6 +39,142 @@ async function migrate(db: SQLite.SQLiteDatabase) {
   await ensureColumns(db, "media", [{ name: "media_kind", ddl: "media_kind TEXT NOT NULL DEFAULT 'IMAGE'" }]);
 }
 
+// FR-QA: 새로 설치한 기기에서 "주의 필요"/"오늘 객실"이 항상 비어있으면 QA/데모가 불편하므로,
+// 로컬 DB에 세션이 하나도 없을 때(최초 실행)만 한 번 데모 데이터를 채운다.
+// 이미 세션이 하나라도 있으면(사용자가 실제로 점검을 시작했으면) 아무 것도 하지 않는다.
+async function seedDemoDataIfEmpty(db: SQLite.SQLiteDatabase) {
+  const countRow = await db.getFirstAsync<{ c: number }>(`SELECT COUNT(*) as c FROM sessions`);
+  if ((countRow?.c ?? 0) > 0) return;
+
+  const now = new Date();
+  const atToday = (h: number, m: number) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString();
+
+  type DemoSession = {
+    id: string;
+    hotel_name: string;
+    room_label: string;
+    type: "ROOM_PRO" | "BATH_PRO";
+    status: "IN_PROGRESS" | "COMPLETED";
+    started_at: string;
+    completed_at: string | null;
+    synced: number;
+    inspector_name: string;
+  };
+
+  const sessions: DemoSession[] = [
+    {
+      id: "demo-session-1",
+      hotel_name: "그랜드 워커힐",
+      room_label: "1201호",
+      type: "ROOM_PRO",
+      status: "COMPLETED",
+      started_at: atToday(9, 10),
+      completed_at: atToday(9, 42),
+      synced: 0,
+      inspector_name: "김점검",
+    },
+    {
+      id: "demo-session-2",
+      hotel_name: "그랜드 워커힐",
+      room_label: "1502호",
+      type: "ROOM_PRO",
+      status: "IN_PROGRESS",
+      started_at: atToday(10, 5),
+      completed_at: null,
+      synced: 0,
+      inspector_name: "김점검",
+    },
+    {
+      id: "demo-session-3",
+      hotel_name: "신라 부산",
+      room_label: "803호",
+      type: "BATH_PRO",
+      status: "COMPLETED",
+      started_at: atToday(8, 30),
+      completed_at: atToday(8, 55),
+      synced: 1,
+      inspector_name: "이점검",
+    },
+    {
+      id: "demo-session-4",
+      hotel_name: "롯데 제주",
+      room_label: "2104호",
+      type: "ROOM_PRO",
+      status: "IN_PROGRESS",
+      started_at: atToday(11, 20),
+      completed_at: null,
+      synced: 0,
+      inspector_name: "이점검",
+    },
+    {
+      id: "demo-session-5",
+      hotel_name: "그랜드 워커힐",
+      room_label: "905호",
+      type: "BATH_PRO",
+      status: "COMPLETED",
+      started_at: atToday(7, 45),
+      completed_at: atToday(8, 15),
+      synced: 0,
+      inspector_name: "김점검",
+    },
+  ];
+
+  for (const s of sessions) {
+    await db.runAsync(
+      `INSERT INTO sessions (id, parent_session_id, hotel_name, room_label, type, status, checkin_method, gps_lat, gps_lng, started_at, completed_at, synced, inspector_name)
+       VALUES (?, NULL, ?, ?, ?, ?, 'QR', NULL, NULL, ?, ?, ?, ?)`,
+      [s.id, s.hotel_name, s.room_label, s.type, s.status, s.started_at, s.completed_at, s.synced, s.inspector_name],
+    );
+  }
+
+  const items: {
+    id: string;
+    session_id: string;
+    item_name: string;
+    state: "CAUTION" | "URGENT";
+    problem_description: string;
+    requires_hotel_approval: number;
+    photo_count: number;
+  }[] = [
+    {
+      id: "demo-item-1",
+      session_id: "demo-session-2",
+      item_name: "에어컨 냉방",
+      state: "URGENT",
+      problem_description: "냉방이 전혀 안 됨, 콤프레서 이상 의심",
+      requires_hotel_approval: 1,
+      photo_count: 2,
+    },
+    {
+      id: "demo-item-2",
+      session_id: "demo-session-1",
+      item_name: "화장실 배수",
+      state: "CAUTION",
+      problem_description: "배수 속도가 느림, 이물질 제거 필요",
+      requires_hotel_approval: 0,
+      photo_count: 1,
+    },
+    {
+      id: "demo-item-3",
+      session_id: "demo-session-4",
+      item_name: "카펫 얼룩",
+      state: "CAUTION",
+      problem_description: "얼룩 제거 불가, 교체 필요",
+      requires_hotel_approval: 1,
+      photo_count: 3,
+    },
+  ];
+
+  for (const it of items) {
+    await db.runAsync(
+      `INSERT INTO inspection_items (id, session_id, item_def_id, item_name, state, comment, photo_count, problem_description, requires_hotel_approval)
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+      [it.id, it.session_id, it.id, it.item_name, it.state, it.photo_count, it.problem_description, it.requires_hotel_approval],
+    );
+  }
+}
+
 function getDb() {
   if (!dbPromise) {
     dbPromise = SQLite.openDatabaseAsync("hnjapp.db").then(async (db) => {
@@ -84,6 +220,7 @@ function getDb() {
         );
       `);
       await migrate(db);
+      await seedDemoDataIfEmpty(db);
       return db;
     });
   }
