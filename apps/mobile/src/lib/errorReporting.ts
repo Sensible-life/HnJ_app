@@ -1,8 +1,8 @@
+import { API_BASE_URL } from "./config";
 // FR: "모니터링 도구 연동 (크래시/에러/알림 발송 실패 로그)" — TODO.md Phase 7.
 // 진짜 크래시 리포팅 서비스(Sentry 등)는 계정/DSN 발급이 필요해 이 개발 환경에서는
 // 붙이지 못했다. 대신 백엔드에 만들어둔 POST /logs/client-error로 최소한의 에러
 // 리포팅을 구현해뒀다 — 실제 서비스에서는 이 함수 내부만 Sentry SDK 호출로 교체하면 된다.
-const API_BASE_URL = "http://localhost:3001";
 
 export function reportError(message: string, stack?: string, context?: Record<string, unknown>) {
   // 리포팅 자체가 앱을 죽이면 안 되므로 항상 fire-and-forget + swallow.

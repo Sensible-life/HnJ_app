@@ -1,7 +1,7 @@
 import { getUnsyncedMedia, markMediaSynced, LocalMedia } from "./db";
 import { isOnline } from "./sync";
+import { API_BASE_URL } from "./config";
 
-const API_BASE_URL = "http://localhost:3001";
 
 /**
  * FR-MED-01 연장: 촬영된 사진을 백그라운드로 서버에 업로드한다.

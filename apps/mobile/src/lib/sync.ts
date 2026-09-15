@@ -1,8 +1,7 @@
 import * as Network from "expo-network";
 import { getUnsyncedSessions, getItemsForSession, markSessionSynced } from "./db";
+import { API_BASE_URL } from "./config";
 
-// TODO: 실제 배포 시 환경변수/설정으로 분리
-const API_BASE_URL = "http://localhost:3001";
 
 export async function isOnline(): Promise<boolean> {
   try {

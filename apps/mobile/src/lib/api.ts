@@ -1,5 +1,5 @@
+import { API_BASE_URL } from "./config";
 // FR: docs/FEATURE_SCOPE.md 우선순위 A — 체크인 시 실제 호텔/담당자 선택 흐름을 위한 최소 API 클라이언트
-const API_BASE_URL = "http://localhost:3001";
 
 export interface ApiHotel {
   id: string;
