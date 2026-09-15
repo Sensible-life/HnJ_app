@@ -5,11 +5,19 @@ export function StackedBarChart({ data, height = 140 }: { data: Point[]; height?
   const totals = data.map((d) => d.normal + d.caution + d.urgent);
   const max = Math.max(1, ...totals);
   const barWidth = 16;
-  const gap = 8;
+  // 날짜 라벨("09/10" 5글자, fontSize 9)이 막대 폭보다 훨씬 넓어서 슬롯이 좁으면
+  // 옆 라벨과 겹쳐 보인다. 라벨이 실제로 겹치지 않을 만큼 슬롯 간격을 넉넉히 준다.
+  const gap = 34;
+  const labelAreaHeight = 20;
   const width = data.length * (barWidth + gap) + gap;
 
   return (
-    <svg width="100%" viewBox={`0 0 ${width} ${height + 24}`} role="img" aria-label="화장실 상태 변화 그래프">
+    <svg
+      width="100%"
+      viewBox={`0 0 ${width} ${height + labelAreaHeight}`}
+      role="img"
+      aria-label="화장실 상태 변화 그래프"
+    >
       {data.map((d, i) => {
         const total = d.normal + d.caution + d.urgent;
         const scale = total > 0 ? height / max : 0;
@@ -25,12 +33,21 @@ export function StackedBarChart({ data, height = 140 }: { data: Point[]; height?
         ];
         return (
           <g key={d.label}>
+            {total === 0 && (
+              <rect x={x} y={height - 1} width={barWidth} height={1} rx={0.5} fill="var(--color-border, #E7EAF0)" />
+            )}
             {segments.map((seg, si) => {
               if (seg.h <= 0) return null;
               y -= seg.h;
               return <rect key={si} x={x} y={y} width={barWidth} height={seg.h} rx={3} fill={seg.color} />;
             })}
-            <text x={x + barWidth / 2} y={height + 16} textAnchor="middle" fontSize="9" fill="var(--color-foreground-secondary)">
+            <text
+              x={x + barWidth / 2}
+              y={height + 13}
+              textAnchor="middle"
+              fontSize="9"
+              fill="var(--color-foreground-secondary)"
+            >
               {d.label}
             </text>
           </g>
